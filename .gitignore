@@ -1,0 +1,23 @@
+/reference
+.DS_Store
+
+# Operating System Files
+.DS_Store
+
+# Logs and temporary files
+*.log
+
+# Dependency directories
+node_modules/
+lib/
+sandbox/
+
+# Build artifacts and generated files
+/build/
+manifest.json
+*.css.d.ts
+
+# Optional: Specific to 'create-figma-plugin' structure
+/packages/**/fixtures/**/build/
+/packages/**/fixtures/**/manifest.json
+
