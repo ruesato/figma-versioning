@@ -1,6 +1,5 @@
 import { render, Container, VerticalSpace, Text, Textbox, Button } from '@create-figma-plugin/ui';
 import { emit } from '@create-figma-plugin/utilities';
-import { h } from 'preact';
 import { useState } from 'preact/hooks';
 
 import './output.css';

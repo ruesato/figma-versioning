@@ -4,7 +4,7 @@ export default function () {
   once('CREATE_VERSION', function (data: { description: string }) {
     const { description } = data;
     // TODO: Implement version creation logic
-    console.log('Creating version:', description);
+    console.warn('Creating version:', description);
     figma.closePlugin();
   });
 
