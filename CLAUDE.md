@@ -16,3 +16,8 @@ Use `@/openspec/AGENTS.md` to learn:
 Keep this managed block so 'openspec update' can refresh the instructions.
 
 <!-- OPENSPEC:END -->
+
+# Git Workflow
+- **NEVER run `git push` automatically** - the user will always review and push manually
+- Stage and commit changes as work progresses
+- After completing tasks, ensure all work is committed but DO NOT push
