@@ -13,10 +13,11 @@ lib/
 sandbox/
 
 # Build artifacts and generated files
-/build/
+build/
 dist/
 manifest.json
 *.css.d.ts
+*.d.css.ts
 output.css
 
 # Optional: Specific to 'create-figma-plugin' structure
