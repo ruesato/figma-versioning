@@ -4,8 +4,12 @@
   "description": "Figma plugin for design versioning and changelog",
   "type": "module",
   "scripts": {
-    "build": "build-figma-plugin --typecheck --minify",
-    "dev": "build-figma-plugin --typecheck --watch",
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "tailwindcss --input ./src/input.css --output ./src/output.css",
+    "build:js": "build-figma-plugin --typecheck --minify",
+    "dev": "npm run build:css && concurrently npm:watch:css npm:watch:js",
+    "watch:css": "tailwindcss --input ./src/input.css --output ./src/output.css --watch",
+    "watch:js": "build-figma-plugin --typecheck --watch",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -35,6 +39,7 @@
     "@create-figma-plugin/tsconfig": "^4.0.3",
     "@figma/plugin-typings": "^1.103.0",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"

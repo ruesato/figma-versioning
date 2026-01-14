@@ -3,7 +3,7 @@ import { emit } from '@create-figma-plugin/utilities';
 import { h } from 'preact';
 import { useState } from 'preact/hooks';
 
-import './styles.css';
+import './output.css';
 
 function Plugin() {
   const [description, setDescription] = useState('');

@@ -17,6 +17,7 @@ sandbox/
 dist/
 manifest.json
 *.css.d.ts
+output.css
 
 # Optional: Specific to 'create-figma-plugin' structure
 /packages/**/fixtures/**/build/
