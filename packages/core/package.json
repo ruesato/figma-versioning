@@ -1,0 +1,33 @@
+{
+  "name": "@figma-versioning/core",
+  "version": "0.0.0",
+  "description": "Core library for Figma versioning and changelog functionality",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "figma",
+    "versioning",
+    "changelog"
+  ],
+  "author": "Ryan Uesato",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

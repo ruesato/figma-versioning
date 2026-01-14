@@ -14,6 +14,7 @@ sandbox/
 
 # Build artifacts and generated files
 /build/
+dist/
 manifest.json
 *.css.d.ts
 
