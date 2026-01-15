@@ -1,6 +1,102 @@
-import { once, showUI } from '@create-figma-plugin/utilities';
+import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
+
+const PAT_STORAGE_KEY = 'figma_versioning_pat';
+
+/**
+ * Check if PAT exists in storage
+ */
+async function checkPatExists(): Promise<boolean> {
+  try {
+    const pat = await figma.clientStorage.getAsync(PAT_STORAGE_KEY);
+    return !!pat;
+  } catch (error) {
+    console.error('Error checking PAT:', error);
+    return false;
+  }
+}
+
+/**
+ * Store PAT securely in clientStorage
+ */
+async function storePat(pat: string): Promise<void> {
+  await figma.clientStorage.setAsync(PAT_STORAGE_KEY, pat);
+}
+
+/**
+ * Retrieve stored PAT
+ */
+async function getPat(): Promise<string | null> {
+  try {
+    return await figma.clientStorage.getAsync(PAT_STORAGE_KEY);
+  } catch (error) {
+    console.error('Error retrieving PAT:', error);
+    return null;
+  }
+}
+
+/**
+ * Remove PAT from storage
+ */
+async function removePat(): Promise<void> {
+  await figma.clientStorage.deleteAsync(PAT_STORAGE_KEY);
+}
+
+/**
+ * Validate PAT by making a test call to Figma REST API
+ */
+async function validatePat(pat: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Test the PAT by calling the Figma API to get current user info
+    const response = await fetch('https://api.figma.com/v1/me', {
+      headers: {
+        'X-Figma-Token': pat
+      }
+    });
+
+    if (response.ok) {
+      return { success: true };
+    } else if (response.status === 403) {
+      return { success: false, error: 'Invalid token. Please check your PAT and try again.' };
+    } else {
+      return { success: false, error: `Validation failed: ${response.statusText}` };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Network error. Please try again.'
+    };
+  }
+}
 
 export default function () {
+  // Handle PAT status check
+  on('CHECK_PAT', async function () {
+    const hasToken = await checkPatExists();
+    emit('PAT_STATUS', { hasToken });
+  });
+
+  // Handle PAT validation and storage
+  on('VALIDATE_PAT', async function (data: { pat: string }) {
+    const { pat } = data;
+
+    // Validate the PAT
+    const validationResult = await validatePat(pat);
+
+    if (validationResult.success) {
+      // Store the PAT if validation succeeds
+      await storePat(pat);
+    }
+
+    emit('PAT_VALIDATION_RESULT', validationResult);
+  });
+
+  // Handle PAT removal
+  on('REMOVE_PAT', async function () {
+    await removePat();
+    emit('PAT_REMOVED');
+  });
+
+  // Handle version creation
   once('CREATE_VERSION', function (data: { description: string }) {
     const { description } = data;
     // TODO: Implement version creation logic

@@ -1,7 +1,9 @@
 {
   "extends": "@create-figma-plugin/tsconfig",
   "compilerOptions": {
-    "types": ["@figma/plugin-typings"]
+    "types": ["@figma/plugin-typings"],
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
   },
   "include": ["src/**/*"]
 }
