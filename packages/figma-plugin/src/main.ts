@@ -1,6 +1,6 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
-import type { VersionIncrement } from '@figma-versioning/core';
+import type { VersionIncrement, Comment } from '@figma-versioning/core';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
@@ -101,6 +101,59 @@ async function updateCurrentVersion(version: string): Promise<void> {
 }
 
 /**
+ * Fetch comments from Figma REST API
+ */
+async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
+  try {
+    // Get the PAT from storage
+    const pat = await getPat();
+    if (!pat) {
+      return { success: false, error: 'No Personal Access Token found. Please configure it in settings.' };
+    }
+
+    // Get the current file key
+    const fileKey = figma.fileKey;
+    if (!fileKey) {
+      return { success: false, error: 'Unable to determine current file.' };
+    }
+
+    // Fetch comments from Figma API
+    const response = await fetch(`https://api.figma.com/v1/files/${fileKey}/comments`, {
+      headers: {
+        'X-Figma-Token': pat
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        return { success: false, error: 'Invalid or expired token. Please update your PAT in settings.' };
+      }
+      return { success: false, error: `API error: ${response.statusText}` };
+    }
+
+    const data = await response.json();
+
+    // Transform Figma comments to our format
+    const comments: Comment[] = (data.comments || []).map((comment: any) => ({
+      author: {
+        name: comment.user?.handle || 'Unknown',
+        email: comment.user?.email
+      },
+      timestamp: new Date(comment.created_at),
+      text: comment.message,
+      nodeId: comment.client_meta?.node_id
+    }));
+
+    return { success: true, comments };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch comments'
+    };
+  }
+}
+
+/**
  * Validate PAT by making a test call to Figma REST API
  */
 async function validatePat(pat: string): Promise<{ success: boolean; error?: string }> {
@@ -182,6 +235,12 @@ export default function () {
     }
 
     emit('NEXT_VERSION', { version: nextVersion });
+  });
+
+  // Handle comment fetching
+  on('FETCH_COMMENTS', async function () {
+    const result = await fetchComments();
+    emit('COMMENTS_FETCHED', result);
   });
 
   // Handle version creation
