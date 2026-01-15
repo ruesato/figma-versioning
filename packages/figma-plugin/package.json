@@ -27,8 +27,7 @@
     "id": "figma-versioning",
     "name": "Figma Versioning",
     "main": "src/main.ts",
-    "ui": "src/ui.tsx",
-    "build": "build"
+    "ui": "src/ui.tsx"
   },
   "dependencies": {
     "@create-figma-plugin/ui": "^4.0.3",
