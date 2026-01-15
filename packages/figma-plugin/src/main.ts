@@ -1,10 +1,12 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
-import type { VersionIncrement, Comment, Annotation, CommitMetrics } from '@figma-versioning/core';
+import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta } from '@figma-versioning/core';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
 const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
+const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
+const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
 /**
  * Check if PAT exists in storage
@@ -246,6 +248,86 @@ function collectMetrics(feedbackCount: number): CommitMetrics {
 }
 
 /**
+ * Get changelog metadata
+ */
+async function getChangelogMeta(): Promise<ChangelogMeta> {
+  try {
+    const meta = await figma.clientStorage.getAsync(CHANGELOG_META_KEY);
+    if (meta) {
+      return meta as ChangelogMeta;
+    }
+  } catch (error) {
+    console.error('Error loading changelog meta:', error);
+  }
+
+  // Return default metadata
+  const mode = await getVersioningMode();
+  return {
+    version: 1,
+    mode,
+    chunkCount: 0
+  };
+}
+
+/**
+ * Save changelog metadata
+ */
+async function saveChangelogMeta(meta: ChangelogMeta): Promise<void> {
+  await figma.clientStorage.setAsync(CHANGELOG_META_KEY, meta);
+}
+
+/**
+ * Load all commits from storage chunks
+ */
+async function loadCommits(): Promise<Commit[]> {
+  const meta = await getChangelogMeta();
+  const commits: Commit[] = [];
+
+  for (let i = 0; i < meta.chunkCount; i++) {
+    try {
+      const chunk = await figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}${i}`);
+      if (chunk && Array.isArray(chunk)) {
+        commits.push(...chunk);
+      }
+    } catch (error) {
+      console.error(`Error loading commit chunk ${i}:`, error);
+    }
+  }
+
+  return commits;
+}
+
+/**
+ * Save a new commit to storage with chunking
+ * Stores commits in chunks of up to 10 commits per chunk
+ */
+async function saveCommit(commit: Commit): Promise<void> {
+  const meta = await getChangelogMeta();
+  const commits = await loadCommits();
+
+  // Add new commit to the beginning (most recent first)
+  commits.unshift(commit);
+
+  // Split commits into chunks (10 commits per chunk)
+  const CHUNK_SIZE = 10;
+  const chunks: Commit[][] = [];
+
+  for (let i = 0; i < commits.length; i += CHUNK_SIZE) {
+    chunks.push(commits.slice(i, i + CHUNK_SIZE));
+  }
+
+  // Save each chunk
+  for (let i = 0; i < chunks.length; i++) {
+    await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, chunks[i]);
+  }
+
+  // Update metadata
+  meta.chunkCount = chunks.length;
+  meta.lastCommitId = commit.id;
+  await saveChangelogMeta(meta);
+}
+
+/**
  * Validate PAT by making a test call to Figma REST API
  */
 async function validatePat(pat: string): Promise<{ success: boolean; error?: string }> {
@@ -364,6 +446,34 @@ export default function () {
         version = await calculateNextSemanticVersion(incrementType || 'patch');
       }
 
+      // Fetch comments (if PAT is available)
+      const commentsResult = await fetchComments();
+      const comments = commentsResult.success ? commentsResult.comments || [] : [];
+
+      // Collect annotations
+      const annotations = collectAnnotations();
+
+      // Collect metrics
+      const feedbackCount = comments.length + annotations.length;
+      const metrics = collectMetrics(feedbackCount);
+
+      // Create commit object
+      const commit: Commit = {
+        id: `commit_${Date.now()}`,
+        version,
+        message,
+        author: {
+          name: figma.currentUser?.name || 'Unknown'
+        },
+        timestamp: new Date(),
+        comments,
+        annotations,
+        metrics
+      };
+
+      // Save commit data
+      await saveCommit(commit);
+
       // Create version description with version number and message
       const description = `${version} - ${message}`;
 
@@ -374,7 +484,7 @@ export default function () {
       await updateCurrentVersion(version);
 
       // Notify UI of success
-      emit('VERSION_CREATED', { success: true, version });
+      emit('VERSION_CREATED', { success: true, version, commit });
 
       figma.notify(`Version ${version} created successfully`);
       figma.closePlugin();
