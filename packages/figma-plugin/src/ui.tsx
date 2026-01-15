@@ -272,7 +272,11 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     }
 
     setError('');
-    emit('CREATE_VERSION', { message, versioningMode });
+    emit('CREATE_VERSION', {
+      message,
+      versioningMode,
+      incrementType: versioningMode === 'semantic' ? incrementType : undefined
+    });
   }
 
   function handleMessageChange(value: string) {

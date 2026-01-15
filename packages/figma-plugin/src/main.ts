@@ -348,12 +348,41 @@ export default function () {
   });
 
   // Handle version creation
-  once('CREATE_VERSION', function (data: { message: string; versioningMode: 'semantic' | 'date-based' }) {
-    const { message, versioningMode } = data;
-    // TODO: Implement version creation logic
-    console.log('Creating version with mode:', versioningMode);
-    console.log('Commit message:', message);
-    figma.closePlugin();
+  once('CREATE_VERSION', async function (data: {
+    message: string;
+    versioningMode: 'semantic' | 'date-based';
+    incrementType?: VersionIncrement;
+  }) {
+    const { message, versioningMode, incrementType } = data;
+
+    try {
+      // Calculate the version
+      let version: string;
+      if (versioningMode === 'date-based') {
+        version = await calculateNextDateVersion();
+      } else {
+        version = await calculateNextSemanticVersion(incrementType || 'patch');
+      }
+
+      // Create version description with version number and message
+      const description = `${version} - ${message}`;
+
+      // Save version to Figma history
+      await figma.saveVersionHistoryAsync(description);
+
+      // Update stored version
+      await updateCurrentVersion(version);
+
+      // Notify UI of success
+      emit('VERSION_CREATED', { success: true, version });
+
+      figma.notify(`Version ${version} created successfully`);
+      figma.closePlugin();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create version';
+      emit('VERSION_CREATED', { success: false, error: errorMessage });
+      figma.notify(`Error: ${errorMessage}`, { error: true });
+    }
   });
 
   showUI({
