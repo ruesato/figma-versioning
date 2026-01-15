@@ -227,6 +227,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
   const [incrementType, setIncrementType] = useState<'major' | 'minor' | 'patch'>('patch');
   const [nextVersion, setNextVersion] = useState<string>('');
   const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const MAX_MESSAGE_LENGTH = 500;
   const remainingChars = MAX_MESSAGE_LENGTH - message.length;
@@ -260,6 +261,19 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     return unsubscribe;
   }, []);
 
+  // Listen for version creation result
+  useEffect(() => {
+    const unsubscribe = on('VERSION_CREATED', function (data: { success: boolean; version?: string; error?: string }) {
+      setIsCreating(false);
+      if (!data.success) {
+        setError(data.error || 'Failed to create version');
+      }
+      // On success, the plugin will close automatically
+    });
+
+    return unsubscribe;
+  }, []);
+
   function handleCreateVersion() {
     // Validate message
     if (!message.trim()) {
@@ -272,6 +286,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     }
 
     setError('');
+    setIsCreating(true);
     emit('CREATE_VERSION', {
       message,
       versioningMode,
@@ -506,8 +521,8 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       </div>
 
       <VerticalSpace space="medium" />
-      <Button onClick={handleCreateVersion} fullWidth>
-        Create Commit
+      <Button onClick={handleCreateVersion} fullWidth disabled={isCreating}>
+        {isCreating ? 'Creating...' : 'Create Commit'}
       </Button>
     </Container>
   );
