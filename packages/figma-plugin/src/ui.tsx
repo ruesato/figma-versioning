@@ -242,10 +242,12 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     return unsubscribe;
   }, []);
 
-  // Update next version when increment type changes (for semantic mode)
+  // Update next version when versioning mode or increment type changes
   useEffect(() => {
     if (versioningMode === 'semantic') {
-      emit('GET_NEXT_VERSION', { increment: incrementType });
+      emit('GET_NEXT_VERSION', { increment: incrementType, mode: 'semantic' });
+    } else {
+      emit('GET_NEXT_VERSION', { mode: 'date-based' });
     }
   }, [versioningMode, incrementType]);
 
@@ -487,17 +489,14 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
         <VerticalSpace space="extraSmall" />
         <Text>
           <div style={{ fontSize: '16px', fontWeight: '600' }}>
-            {versioningMode === 'semantic'
-              ? (nextVersion || '1.0.0')
-              : new Date().toISOString().split('T')[0]
-            }
+            {nextVersion || (versioningMode === 'semantic' ? '1.0.0' : new Date().toISOString().split('T')[0])}
           </div>
         </Text>
         <VerticalSpace space="extraSmall" />
         <Muted>
           {versioningMode === 'semantic'
             ? `Next ${incrementType} version`
-            : 'Date-based version for today'
+            : 'Date-based version (auto-sequenced)'
           }
         </Muted>
       </div>

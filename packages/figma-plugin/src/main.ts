@@ -1,5 +1,5 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
-import { getNextSemanticVersion } from '@figma-versioning/core';
+import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
 import type { VersionIncrement } from '@figma-versioning/core';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
@@ -86,6 +86,14 @@ async function calculateNextSemanticVersion(increment: VersionIncrement): Promis
 }
 
 /**
+ * Calculate the next date-based version
+ */
+async function calculateNextDateVersion(): Promise<string> {
+  const currentVersion = await getCurrentVersion();
+  return getNextDateVersion(currentVersion);
+}
+
+/**
  * Update the current version in storage
  */
 async function updateCurrentVersion(version: string): Promise<void> {
@@ -160,8 +168,19 @@ export default function () {
   });
 
   // Handle next version calculation
-  on('GET_NEXT_VERSION', async function (data: { increment: VersionIncrement }) {
-    const nextVersion = await calculateNextSemanticVersion(data.increment);
+  on('GET_NEXT_VERSION', async function (data: {
+    increment?: VersionIncrement;
+    mode?: 'semantic' | 'date-based'
+  }) {
+    let nextVersion: string;
+
+    if (data.mode === 'date-based') {
+      nextVersion = await calculateNextDateVersion();
+    } else {
+      // Default to semantic with patch increment
+      nextVersion = await calculateNextSemanticVersion(data.increment || 'patch');
+    }
+
     emit('NEXT_VERSION', { version: nextVersion });
   });
 
