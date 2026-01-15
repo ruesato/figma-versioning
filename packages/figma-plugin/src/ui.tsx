@@ -222,11 +222,33 @@ function SettingsView({ onBack }: { onBack: () => void }) {
 }
 
 function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; hasToken: boolean }) {
-  const [description, setDescription] = useState('');
+  const [message, setMessage] = useState('');
+  const [versioningMode, setVersioningMode] = useState<'semantic' | 'date-based'>('semantic');
+  const [error, setError] = useState('');
+
+  const MAX_MESSAGE_LENGTH = 500;
+  const remainingChars = MAX_MESSAGE_LENGTH - message.length;
 
   function handleCreateVersion() {
-    if (description.trim()) {
-      emit('CREATE_VERSION', { description });
+    // Validate message
+    if (!message.trim()) {
+      setError('Commit message is required');
+      return;
+    }
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      setError(`Message must be ${MAX_MESSAGE_LENGTH} characters or less`);
+      return;
+    }
+
+    setError('');
+    emit('CREATE_VERSION', { message, versioningMode });
+  }
+
+  function handleMessageChange(value: string) {
+    setMessage(value);
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
     }
   }
 
@@ -264,16 +286,122 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
         </>
       )}
 
-      <Text>Create a new version of your design</Text>
-      <VerticalSpace space="small" />
-      <Textbox
-        value={description}
-        onValueInput={setDescription}
-        placeholder="Version description"
+      <Text>
+        <Bold>Create Commit</Bold>
+      </Text>
+      <VerticalSpace space="medium" />
+
+      {/* Commit Message */}
+      <Text>
+        <Bold>Commit Message</Bold>
+      </Text>
+      <VerticalSpace space="extraSmall" />
+      <textarea
+        value={message}
+        onInput={(e) => handleMessageChange((e.target as HTMLTextAreaElement).value)}
+        placeholder="Describe what changed in this version..."
+        rows={3}
+        style={{
+          width: '100%',
+          padding: '8px',
+          fontSize: '11px',
+          fontFamily: 'Inter, sans-serif',
+          border: '1px solid var(--color-border)',
+          borderRadius: '2px',
+          backgroundColor: 'var(--color-bg)',
+          color: 'var(--color-text)',
+          resize: 'vertical',
+          minHeight: '60px',
+          boxSizing: 'border-box'
+        }}
       />
+      <VerticalSpace space="extraSmall" />
+      <Muted>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Required</span>
+          <span style={{ color: remainingChars < 0 ? 'var(--color-red)' : undefined }}>
+            {remainingChars} characters remaining
+          </span>
+        </div>
+      </Muted>
+
+      {error && (
+        <>
+          <VerticalSpace space="small" />
+          <Text>
+            <div style={{ color: 'var(--color-red)' }}>{error}</div>
+          </Text>
+        </>
+      )}
+
+      <VerticalSpace space="medium" />
+
+      {/* Versioning Mode */}
+      <Text>
+        <Bold>Versioning Mode</Bold>
+      </Text>
       <VerticalSpace space="small" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="versioningMode"
+            value="semantic"
+            checked={versioningMode === 'semantic'}
+            onChange={() => setVersioningMode('semantic')}
+            style={{ marginRight: '8px' }}
+          />
+          <div>
+            <Text>
+              <Bold>Semantic Versioning</Bold>
+            </Text>
+            <Muted>Auto-increment version numbers (e.g., 1.0.0, 1.1.0, 2.0.0)</Muted>
+          </div>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+          <input
+            type="radio"
+            name="versioningMode"
+            value="date-based"
+            checked={versioningMode === 'date-based'}
+            onChange={() => setVersioningMode('date-based')}
+            style={{ marginRight: '8px' }}
+          />
+          <div>
+            <Text>
+              <Bold>Date-based Versioning</Bold>
+            </Text>
+            <Muted>Use date with sequence suffix (e.g., 2026-01-14, 2026-01-14.1)</Muted>
+          </div>
+        </label>
+      </div>
+
+      <VerticalSpace space="medium" />
+
+      {/* Version Preview */}
+      <div
+        style={{
+          padding: '12px',
+          backgroundColor: 'var(--color-bg-secondary)',
+          borderRadius: '4px'
+        }}
+      >
+        <Text>
+          <Bold>Next Version</Bold>
+        </Text>
+        <VerticalSpace space="extraSmall" />
+        <Text>
+          <div style={{ fontSize: '16px', fontWeight: '600' }}>
+            {versioningMode === 'semantic' ? '1.0.0' : new Date().toISOString().split('T')[0]}
+          </div>
+        </Text>
+        <VerticalSpace space="extraSmall" />
+        <Muted>Version will be calculated automatically</Muted>
+      </div>
+
+      <VerticalSpace space="medium" />
       <Button onClick={handleCreateVersion} fullWidth>
-        Create Version
+        Create Commit
       </Button>
     </Container>
   );

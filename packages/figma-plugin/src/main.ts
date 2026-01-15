@@ -97,10 +97,11 @@ export default function () {
   });
 
   // Handle version creation
-  once('CREATE_VERSION', function (data: { description: string }) {
-    const { description } = data;
+  once('CREATE_VERSION', function (data: { message: string; versioningMode: 'semantic' | 'date-based' }) {
+    const { message, versioningMode } = data;
     // TODO: Implement version creation logic
-    console.warn('Creating version:', description);
+    console.log('Creating version with mode:', versioningMode);
+    console.log('Commit message:', message);
     figma.closePlugin();
   });
 
