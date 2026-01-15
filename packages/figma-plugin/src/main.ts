@@ -1,6 +1,6 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
-import type { VersionIncrement, Comment, Annotation } from '@figma-versioning/core';
+import type { VersionIncrement, Comment, Annotation, CommitMetrics } from '@figma-versioning/core';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
@@ -195,6 +195,57 @@ function collectAnnotations(): Annotation[] {
 }
 
 /**
+ * Count metrics for a node and its children
+ */
+function countNodeMetrics(node: SceneNode, metrics: Omit<CommitMetrics, 'feedbackCount' | 'feedbackDelta'>): void {
+  // Increment total nodes
+  metrics.totalNodes++;
+
+  // Check node type and increment appropriate counter
+  if (node.type === 'FRAME') {
+    metrics.frames++;
+  } else if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+    metrics.components++;
+  } else if (node.type === 'INSTANCE') {
+    metrics.instances++;
+  } else if (node.type === 'TEXT') {
+    metrics.textNodes++;
+  }
+
+  // Recursively process children if the node has them
+  if ('children' in node) {
+    for (const child of node.children) {
+      countNodeMetrics(child, metrics);
+    }
+  }
+}
+
+/**
+ * Collect node metrics from the current page
+ */
+function collectMetrics(feedbackCount: number): CommitMetrics {
+  const metrics: Omit<CommitMetrics, 'feedbackCount' | 'feedbackDelta'> = {
+    totalNodes: 0,
+    frames: 0,
+    components: 0,
+    instances: 0,
+    textNodes: 0
+  };
+
+  const currentPage = figma.currentPage;
+
+  // Traverse all nodes on the current page
+  for (const node of currentPage.children) {
+    countNodeMetrics(node, metrics);
+  }
+
+  return {
+    ...metrics,
+    feedbackCount
+  };
+}
+
+/**
  * Validate PAT by making a test call to Figma REST API
  */
 async function validatePat(pat: string): Promise<{ success: boolean; error?: string }> {
@@ -288,6 +339,12 @@ export default function () {
   on('COLLECT_ANNOTATIONS', function () {
     const annotations = collectAnnotations();
     emit('ANNOTATIONS_COLLECTED', { annotations });
+  });
+
+  // Handle metrics collection
+  on('COLLECT_METRICS', function (data: { feedbackCount: number }) {
+    const metrics = collectMetrics(data.feedbackCount);
+    emit('METRICS_COLLECTED', { metrics });
   });
 
   // Handle version creation
