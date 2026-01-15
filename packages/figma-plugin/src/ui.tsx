@@ -229,6 +229,17 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
   const MAX_MESSAGE_LENGTH = 500;
   const remainingChars = MAX_MESSAGE_LENGTH - message.length;
 
+  // Load saved versioning mode on mount
+  useEffect(() => {
+    emit('GET_VERSIONING_MODE');
+
+    const unsubscribe = on('VERSIONING_MODE', function (data: { mode: 'semantic' | 'date-based' }) {
+      setVersioningMode(data.mode);
+    });
+
+    return unsubscribe;
+  }, []);
+
   function handleCreateVersion() {
     // Validate message
     if (!message.trim()) {
@@ -250,6 +261,11 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     if (error) {
       setError('');
     }
+  }
+
+  function handleVersioningModeChange(mode: 'semantic' | 'date-based') {
+    setVersioningMode(mode);
+    emit('SET_VERSIONING_MODE', { mode });
   }
 
   return (
@@ -348,7 +364,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
             name="versioningMode"
             value="semantic"
             checked={versioningMode === 'semantic'}
-            onChange={() => setVersioningMode('semantic')}
+            onChange={() => handleVersioningModeChange('semantic')}
             style={{ marginRight: '8px' }}
           />
           <div>
@@ -364,7 +380,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
             name="versioningMode"
             value="date-based"
             checked={versioningMode === 'date-based'}
-            onChange={() => setVersioningMode('date-based')}
+            onChange={() => handleVersioningModeChange('date-based')}
             style={{ marginRight: '8px' }}
           />
           <div>

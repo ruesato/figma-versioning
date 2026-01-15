@@ -1,6 +1,7 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
+const VERSIONING_MODE_KEY = 'figma_versioning_mode';
 
 /**
  * Check if PAT exists in storage
@@ -39,6 +40,26 @@ async function getPat(): Promise<string | null> {
  */
 async function removePat(): Promise<void> {
   await figma.clientStorage.deleteAsync(PAT_STORAGE_KEY);
+}
+
+/**
+ * Get stored versioning mode (defaults to 'semantic')
+ */
+async function getVersioningMode(): Promise<'semantic' | 'date-based'> {
+  try {
+    const mode = await figma.clientStorage.getAsync(VERSIONING_MODE_KEY);
+    return mode === 'date-based' ? 'date-based' : 'semantic';
+  } catch (error) {
+    console.error('Error retrieving versioning mode:', error);
+    return 'semantic';
+  }
+}
+
+/**
+ * Store versioning mode
+ */
+async function setVersioningMode(mode: 'semantic' | 'date-based'): Promise<void> {
+  await figma.clientStorage.setAsync(VERSIONING_MODE_KEY, mode);
 }
 
 /**
@@ -94,6 +115,18 @@ export default function () {
   on('REMOVE_PAT', async function () {
     await removePat();
     emit('PAT_REMOVED');
+  });
+
+  // Handle versioning mode retrieval
+  on('GET_VERSIONING_MODE', async function () {
+    const mode = await getVersioningMode();
+    emit('VERSIONING_MODE', { mode });
+  });
+
+  // Handle versioning mode update
+  on('SET_VERSIONING_MODE', async function (data: { mode: 'semantic' | 'date-based' }) {
+    await setVersioningMode(data.mode);
+    emit('VERSIONING_MODE_SAVED', { mode: data.mode });
   });
 
   // Handle version creation
