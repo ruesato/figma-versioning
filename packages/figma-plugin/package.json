@@ -33,6 +33,7 @@
   "dependencies": {
     "@create-figma-plugin/ui": "^4.0.3",
     "@create-figma-plugin/utilities": "^4.0.3",
+    "@figma-versioning/core": "workspace:*",
     "preact": "^10.26.1"
   },
   "devDependencies": {

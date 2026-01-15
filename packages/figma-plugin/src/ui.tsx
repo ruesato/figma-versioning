@@ -224,6 +224,8 @@ function SettingsView({ onBack }: { onBack: () => void }) {
 function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; hasToken: boolean }) {
   const [message, setMessage] = useState('');
   const [versioningMode, setVersioningMode] = useState<'semantic' | 'date-based'>('semantic');
+  const [incrementType, setIncrementType] = useState<'major' | 'minor' | 'patch'>('patch');
+  const [nextVersion, setNextVersion] = useState<string>('');
   const [error, setError] = useState('');
 
   const MAX_MESSAGE_LENGTH = 500;
@@ -235,6 +237,22 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
 
     const unsubscribe = on('VERSIONING_MODE', function (data: { mode: 'semantic' | 'date-based' }) {
       setVersioningMode(data.mode);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Update next version when increment type changes (for semantic mode)
+  useEffect(() => {
+    if (versioningMode === 'semantic') {
+      emit('GET_NEXT_VERSION', { increment: incrementType });
+    }
+  }, [versioningMode, incrementType]);
+
+  // Listen for next version updates
+  useEffect(() => {
+    const unsubscribe = on('NEXT_VERSION', function (data: { version: string }) {
+      setNextVersion(data.version);
     });
 
     return unsubscribe;
@@ -392,6 +410,67 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
         </label>
       </div>
 
+      {/* Semantic Version Increment Type */}
+      {versioningMode === 'semantic' && (
+        <>
+          <VerticalSpace space="medium" />
+          <Text>
+            <Bold>Increment Type</Bold>
+          </Text>
+          <VerticalSpace space="small" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="incrementType"
+                value="major"
+                checked={incrementType === 'major'}
+                onChange={() => setIncrementType('major')}
+                style={{ marginRight: '8px' }}
+              />
+              <div>
+                <Text>
+                  <Bold>Major</Bold>
+                </Text>
+                <Muted>Breaking changes (X.0.0)</Muted>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="incrementType"
+                value="minor"
+                checked={incrementType === 'minor'}
+                onChange={() => setIncrementType('minor')}
+                style={{ marginRight: '8px' }}
+              />
+              <div>
+                <Text>
+                  <Bold>Minor</Bold>
+                </Text>
+                <Muted>New features (0.X.0)</Muted>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="incrementType"
+                value="patch"
+                checked={incrementType === 'patch'}
+                onChange={() => setIncrementType('patch')}
+                style={{ marginRight: '8px' }}
+              />
+              <div>
+                <Text>
+                  <Bold>Patch</Bold>
+                </Text>
+                <Muted>Bug fixes (0.0.X)</Muted>
+              </div>
+            </label>
+          </div>
+        </>
+      )}
+
       <VerticalSpace space="medium" />
 
       {/* Version Preview */}
@@ -408,11 +487,19 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
         <VerticalSpace space="extraSmall" />
         <Text>
           <div style={{ fontSize: '16px', fontWeight: '600' }}>
-            {versioningMode === 'semantic' ? '1.0.0' : new Date().toISOString().split('T')[0]}
+            {versioningMode === 'semantic'
+              ? (nextVersion || '1.0.0')
+              : new Date().toISOString().split('T')[0]
+            }
           </div>
         </Text>
         <VerticalSpace space="extraSmall" />
-        <Muted>Version will be calculated automatically</Muted>
+        <Muted>
+          {versioningMode === 'semantic'
+            ? `Next ${incrementType} version`
+            : 'Date-based version for today'
+          }
+        </Muted>
       </div>
 
       <VerticalSpace space="medium" />

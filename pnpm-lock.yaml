@@ -32,6 +32,9 @@ importers:
       '@create-figma-plugin/utilities':
         specifier: ^4.0.3
         version: 4.0.3
+      '@figma-versioning/core':
+        specifier: workspace:*
+        version: link:../core
       preact:
         specifier: ^10.26.1
         version: 10.28.2

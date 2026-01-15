@@ -1,7 +1,10 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
+import { getNextSemanticVersion } from '@figma-versioning/core';
+import type { VersionIncrement } from '@figma-versioning/core';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
+const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 
 /**
  * Check if PAT exists in storage
@@ -60,6 +63,33 @@ async function getVersioningMode(): Promise<'semantic' | 'date-based'> {
  */
 async function setVersioningMode(mode: 'semantic' | 'date-based'): Promise<void> {
   await figma.clientStorage.setAsync(VERSIONING_MODE_KEY, mode);
+}
+
+/**
+ * Get current semantic version (null if not set)
+ */
+async function getCurrentVersion(): Promise<string | null> {
+  try {
+    return await figma.clientStorage.getAsync(CURRENT_VERSION_KEY);
+  } catch (error) {
+    console.error('Error retrieving current version:', error);
+    return null;
+  }
+}
+
+/**
+ * Calculate the next semantic version based on increment type
+ */
+async function calculateNextSemanticVersion(increment: VersionIncrement): Promise<string> {
+  const currentVersion = await getCurrentVersion();
+  return getNextSemanticVersion(currentVersion, increment);
+}
+
+/**
+ * Update the current version in storage
+ */
+async function updateCurrentVersion(version: string): Promise<void> {
+  await figma.clientStorage.setAsync(CURRENT_VERSION_KEY, version);
 }
 
 /**
@@ -127,6 +157,12 @@ export default function () {
   on('SET_VERSIONING_MODE', async function (data: { mode: 'semantic' | 'date-based' }) {
     await setVersioningMode(data.mode);
     emit('VERSIONING_MODE_SAVED', { mode: data.mode });
+  });
+
+  // Handle next version calculation
+  on('GET_NEXT_VERSION', async function (data: { increment: VersionIncrement }) {
+    const nextVersion = await calculateNextSemanticVersion(data.increment);
+    emit('NEXT_VERSION', { version: nextVersion });
   });
 
   // Handle version creation
