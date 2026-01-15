@@ -2,6 +2,126 @@
  * Core type definitions for Figma versioning
  */
 
+/**
+ * Versioning mode for the plugin
+ */
+export type VersioningMode = 'semantic' | 'date-based';
+
+/**
+ * Semantic version increment type
+ */
+export type VersionIncrement = 'major' | 'minor' | 'patch';
+
+/**
+ * Author information for commits and comments
+ */
+export interface Author {
+  name: string;
+  email?: string;
+}
+
+/**
+ * Figma comment captured at commit time
+ */
+export interface Comment {
+  /** Comment author */
+  author: Author;
+  /** Comment creation timestamp */
+  timestamp: Date;
+  /** Comment text content */
+  text: string;
+  /** Associated Figma node ID if comment is pinned to a specific node */
+  nodeId?: string;
+}
+
+/**
+ * Dev Mode annotation captured at commit time
+ */
+export interface Annotation {
+  /** Label text from the annotation */
+  label: string;
+  /** Associated Figma node ID */
+  nodeId: string;
+  /** Whether the annotation is pinned */
+  isPinned: boolean;
+  /** Additional properties from the annotation */
+  properties?: Record<string, unknown>;
+}
+
+/**
+ * Activity metrics for a commit
+ */
+export interface CommitMetrics {
+  /** Total node count at commit time */
+  totalNodes: number;
+  /** Number of frame nodes */
+  frames: number;
+  /** Number of component nodes */
+  components: number;
+  /** Number of instance nodes */
+  instances: number;
+  /** Number of text nodes */
+  textNodes: number;
+  /** Net change in total node count from previous commit */
+  nodesDelta?: number;
+  /** Number of comments and annotations in this commit */
+  feedbackCount: number;
+  /** Change in feedback count from previous commit */
+  feedbackDelta?: number;
+}
+
+/**
+ * Complete commit record with all captured data
+ */
+export interface Commit {
+  /** Unique commit identifier */
+  id: string;
+  /** Version string (semantic like "1.2.3" or date-based like "2026-01-15") */
+  version: string;
+  /** Commit message (max 500 characters) */
+  message: string;
+  /** Commit author */
+  author: Author;
+  /** Commit creation timestamp */
+  timestamp: Date;
+  /** Comments captured since previous commit */
+  comments: Comment[];
+  /** Annotations captured from current page */
+  annotations: Annotation[];
+  /** Activity metrics at commit time */
+  metrics: CommitMetrics;
+}
+
+/**
+ * Compressed commit record for archival storage
+ * Retains essential metadata but drops full comment/annotation text
+ */
+export interface ArchivedCommit {
+  id: string;
+  version: string;
+  message: string;
+  author: Author;
+  timestamp: Date;
+  /** Summary counts only, no full data */
+  commentCount: number;
+  annotationCount: number;
+  totalNodes: number;
+}
+
+/**
+ * Metadata for changelog storage management
+ */
+export interface ChangelogMeta {
+  /** Schema version for migration support */
+  version: number;
+  /** Current versioning mode */
+  mode: VersioningMode;
+  /** ID of the most recent commit */
+  lastCommitId?: string;
+  /** Number of chunk keys in storage */
+  chunkCount: number;
+}
+
 export interface FigmaVersion {
   id: string;
   timestamp: Date;
