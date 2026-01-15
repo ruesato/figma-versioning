@@ -1,6 +1,6 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
-import type { VersionIncrement, Comment } from '@figma-versioning/core';
+import type { VersionIncrement, Comment, Annotation } from '@figma-versioning/core';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
@@ -154,6 +154,47 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
 }
 
 /**
+ * Recursively collect annotations from a node and its children
+ */
+function collectAnnotationsFromNode(node: SceneNode, annotations: Annotation[]): void {
+  // Check if node has annotations
+  if ('annotations' in node && Array.isArray(node.annotations)) {
+    for (const annotation of node.annotations) {
+      annotations.push({
+        label: annotation.label || '',
+        nodeId: node.id,
+        isPinned: true, // Annotations in the Plugin API are considered "pinned"
+        properties: {
+          ...annotation
+        }
+      });
+    }
+  }
+
+  // Recursively process children if the node has them
+  if ('children' in node) {
+    for (const child of node.children) {
+      collectAnnotationsFromNode(child, annotations);
+    }
+  }
+}
+
+/**
+ * Collect all annotations from the current page
+ */
+function collectAnnotations(): Annotation[] {
+  const annotations: Annotation[] = [];
+  const currentPage = figma.currentPage;
+
+  // Traverse all nodes on the current page
+  for (const node of currentPage.children) {
+    collectAnnotationsFromNode(node, annotations);
+  }
+
+  return annotations;
+}
+
+/**
  * Validate PAT by making a test call to Figma REST API
  */
 async function validatePat(pat: string): Promise<{ success: boolean; error?: string }> {
@@ -241,6 +282,12 @@ export default function () {
   on('FETCH_COMMENTS', async function () {
     const result = await fetchComments();
     emit('COMMENTS_FETCHED', result);
+  });
+
+  // Handle annotation collection
+  on('COLLECT_ANNOTATIONS', function () {
+    const annotations = collectAnnotations();
+    emit('ANNOTATIONS_COLLECTED', { annotations });
   });
 
   // Handle version creation
