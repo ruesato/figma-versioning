@@ -85,10 +85,10 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
   messageFrame.primaryAxisSizingMode = 'FIXED';
   messageFrame.counterAxisSizingMode = 'AUTO';
   messageFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
-  messageFrame.itemSpacing = 8;
+  messageFrame.itemSpacing = 12; // Increased from 8 to match SECTION_SPACING
   messageFrame.fills = [];
 
-  // Title (prominent)
+  // Title (prominent, bold, primary color)
   const titleText = createText(
     commit.title,
     16,
@@ -99,13 +99,13 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
   titleText.resize(FRAME_WIDTH - PADDING * 2, titleText.height);
   messageFrame.appendChild(titleText);
 
-  // Description (if provided)
+  // Description (if provided, regular weight, secondary color for visual hierarchy)
   if (commit.description) {
     const descriptionText = createText(
       commit.description,
-      14,
+      13, // Reduced from 14 to 13 for better contrast with title
       'Regular',
-      colors.text
+      colors.textSecondary // Changed from text to textSecondary for visual hierarchy
     );
     descriptionText.textAutoResize = 'HEIGHT';
     descriptionText.resize(FRAME_WIDTH - PADDING * 2, descriptionText.height);
