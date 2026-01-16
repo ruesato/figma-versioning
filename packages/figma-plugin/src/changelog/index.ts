@@ -1,0 +1,18 @@
+/**
+ * Changelog Module Public API
+ *
+ * Exports public functions and types for changelog rendering.
+ */
+
+// Renderer exports
+export { renderChangelogEntry, getOrCreateContainerFrame } from './renderer';
+
+// Theme exports
+export { detectTheme, getThemeColors } from './theme';
+export type { Theme, ThemeColors } from './theme';
+
+// Page manager exports
+export { getOrCreateChangelogPage, findChangelogPage, changelogPageExists } from './page-manager';
+
+// Frame builder exports (internal use, but available if needed)
+export { createCommitEntryFrame } from './frame-builder';
