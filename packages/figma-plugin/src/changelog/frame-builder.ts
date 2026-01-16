@@ -46,7 +46,7 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   const header = figma.createFrame();
   header.name = 'Header';
   header.layoutMode = 'VERTICAL';
-  header.primaryAxisSizingMode = 'FIXED';
+  header.primaryAxisSizingMode = 'AUTO';
   header.counterAxisSizingMode = 'FIXED';
   header.resize(FRAME_WIDTH - PADDING * 2, 50);
   header.itemSpacing = 4;
@@ -82,9 +82,9 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
   const messageFrame = figma.createFrame();
   messageFrame.name = 'Title and Description';
   messageFrame.layoutMode = 'VERTICAL';
-  messageFrame.primaryAxisSizingMode = 'FIXED';
-  messageFrame.counterAxisSizingMode = 'AUTO';
-  messageFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
+  messageFrame.primaryAxisSizingMode = 'AUTO';
+  messageFrame.counterAxisSizingMode = 'FIXED';
+  messageFrame.resize(FRAME_WIDTH - PADDING * 2, messageFrame.height);
   messageFrame.itemSpacing = 12; // Increased from 8 to match SECTION_SPACING
   messageFrame.fills = [];
 
@@ -118,10 +118,34 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
     );
     descriptionText.textAutoResize = 'HEIGHT';
     descriptionText.resize(FRAME_WIDTH - PADDING * 2, descriptionText.height);
+
+    console.log('Description text node created:', {
+      id: descriptionText.id,
+      name: descriptionText.name,
+      visible: descriptionText.visible,
+      width: descriptionText.width,
+      height: descriptionText.height,
+      characters: descriptionText.characters,
+      fontSize: descriptionText.fontSize,
+      fills: descriptionText.fills,
+      parent: messageFrame.name
+    });
+
     messageFrame.appendChild(descriptionText);
+    console.log('Description appended to frame. Frame children count:', messageFrame.children.length);
   } else {
     console.log('No description to render');
   }
+
+  console.log('Final messageFrame state:', {
+    name: messageFrame.name,
+    childrenCount: messageFrame.children.length,
+    width: messageFrame.width,
+    height: messageFrame.height,
+    layoutMode: messageFrame.layoutMode,
+    itemSpacing: messageFrame.itemSpacing,
+    visible: messageFrame.visible
+  });
 
   messageFrame.locked = true;
   return messageFrame;
@@ -134,7 +158,7 @@ function createCommentItem(comment: import('@figma-versioning/core').Comment, co
   const commentFrame = figma.createFrame();
   commentFrame.name = 'Comment Item';
   commentFrame.layoutMode = 'VERTICAL';
-  commentFrame.primaryAxisSizingMode = 'FIXED';
+  commentFrame.primaryAxisSizingMode = 'AUTO';
   commentFrame.counterAxisSizingMode = 'AUTO';
   commentFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, 40);
   commentFrame.itemSpacing = 4;
@@ -187,7 +211,7 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
   const commentsFrame = figma.createFrame();
   commentsFrame.name = 'Comments';
   commentsFrame.layoutMode = 'VERTICAL';
-  commentsFrame.primaryAxisSizingMode = 'FIXED';
+  commentsFrame.primaryAxisSizingMode = 'AUTO';
   commentsFrame.counterAxisSizingMode = 'AUTO';
   commentsFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
   commentsFrame.itemSpacing = 8;
@@ -224,7 +248,7 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
   const annotationFrame = figma.createFrame();
   annotationFrame.name = 'Annotation Item';
   annotationFrame.layoutMode = 'VERTICAL';
-  annotationFrame.primaryAxisSizingMode = 'FIXED';
+  annotationFrame.primaryAxisSizingMode = 'AUTO';
   annotationFrame.counterAxisSizingMode = 'AUTO';
   annotationFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, 30);
   annotationFrame.itemSpacing = 4;
@@ -265,7 +289,7 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
   const annotationsFrame = figma.createFrame();
   annotationsFrame.name = 'Annotations';
   annotationsFrame.layoutMode = 'VERTICAL';
-  annotationsFrame.primaryAxisSizingMode = 'FIXED';
+  annotationsFrame.primaryAxisSizingMode = 'AUTO';
   annotationsFrame.counterAxisSizingMode = 'AUTO';
   annotationsFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
   annotationsFrame.itemSpacing = 8;
@@ -313,7 +337,7 @@ export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode>
   const container = figma.createFrame();
   container.name = `Commit: ${commit.version}`;
   container.layoutMode = 'VERTICAL';
-  container.primaryAxisSizingMode = 'FIXED';
+  container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'AUTO';
   container.resize(FRAME_WIDTH, 100);
   container.itemSpacing = SECTION_SPACING;
