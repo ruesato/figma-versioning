@@ -99,8 +99,17 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
   titleText.resize(FRAME_WIDTH - PADDING * 2, titleText.height);
   messageFrame.appendChild(titleText);
 
+  // Debug logging
+  console.log('Commit data:', {
+    title: commit.title,
+    description: commit.description,
+    hasDescription: !!commit.description,
+    descriptionLength: commit.description?.length || 0
+  });
+
   // Description (if provided, regular weight, secondary color for visual hierarchy)
-  if (commit.description) {
+  if (commit.description && commit.description.trim().length > 0) {
+    console.log('Rendering description:', commit.description);
     const descriptionText = createText(
       commit.description,
       13, // Reduced from 14 to 13 for better contrast with title
@@ -110,6 +119,8 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
     descriptionText.textAutoResize = 'HEIGHT';
     descriptionText.resize(FRAME_WIDTH - PADDING * 2, descriptionText.height);
     messageFrame.appendChild(descriptionText);
+  } else {
+    console.log('No description to render');
   }
 
   messageFrame.locked = true;

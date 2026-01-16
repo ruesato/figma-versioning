@@ -499,11 +499,11 @@ export default function () {
       await saveCommit(commit);
 
       // Save version to Figma history
-      // Figma's saveVersionHistoryAsync takes a single description string
-      // We'll format it as: "version - title" and include description if provided
-      const versionDescription = description
-        ? `${version} - ${title}\n\n${description}`
-        : `${version} - ${title}`;
+      // Note: Figma's saveVersionHistoryAsync only accepts a single string,
+      // not separate title/description fields like the native UI.
+      // We only send the title here - full description is stored in our commit data
+      // and will be visible in our changelog rendering
+      const versionDescription = `${version} - ${title}`;
 
       await figma.saveVersionHistoryAsync(versionDescription);
 
