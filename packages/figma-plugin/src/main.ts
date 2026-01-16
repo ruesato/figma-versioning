@@ -1,6 +1,7 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
 import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta } from '@figma-versioning/core';
+import { renderChangelogEntry } from './changelog';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
@@ -483,11 +484,28 @@ export default function () {
       // Update stored version
       await updateCurrentVersion(version);
 
+      // Render changelog entry (with error handling)
+      try {
+        const entryFrame = await renderChangelogEntry(commit);
+
+        // Update commit with frame ID and re-save
+        commit.changelogFrameId = entryFrame.id;
+        await saveCommit(commit);
+      } catch (renderError) {
+        // Log error but don't fail the entire commit
+        console.error('Failed to render changelog entry:', renderError);
+        figma.notify('Version created, but changelog rendering failed', { error: true, timeout: 2000 });
+      }
+
       // Notify UI of success
       emit('VERSION_CREATED', { success: true, version, commit });
 
       figma.notify(`Version ${version} created successfully`);
-      figma.closePlugin();
+
+      // Delay close by 1s to show result
+      setTimeout(() => {
+        figma.closePlugin();
+      }, 1000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create version';
       emit('VERSION_CREATED', { success: false, error: errorMessage });
