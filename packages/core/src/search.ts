@@ -71,7 +71,7 @@ function textContainsKeywords(
 
 /**
  * Search commits for keyword matches
- * Returns commits that contain at least one keyword in their message, comments, or annotations
+ * Returns commits that contain at least one keyword in their title, description, comments, or annotations
  */
 export function searchCommits(
   commits: Commit[],
@@ -87,8 +87,13 @@ export function searchCommits(
   }
 
   return commits.filter(commit => {
-    // Search in commit message
-    if (textContainsKeywords(commit.message, keywords, caseSensitive)) {
+    // Search in commit title
+    if (textContainsKeywords(commit.title, keywords, caseSensitive)) {
+      return true;
+    }
+
+    // Search in commit description
+    if (commit.description && textContainsKeywords(commit.description, keywords, caseSensitive)) {
       return true;
     }
 

@@ -10,9 +10,14 @@ import type { Commit } from './types';
 function formatCommitForPrompt(commit: Commit): string {
   const lines: string[] = [];
 
-  lines.push(`## ${commit.version} - ${commit.message}`);
+  lines.push(`## ${commit.version} - ${commit.title}`);
   lines.push(`**Date:** ${new Date(commit.timestamp).toISOString().split('T')[0]}`);
   lines.push(`**Author:** ${commit.author.name}`);
+
+  if (commit.description) {
+    lines.push('');
+    lines.push(commit.description);
+  }
 
   if (commit.comments.length > 0) {
     lines.push('');
