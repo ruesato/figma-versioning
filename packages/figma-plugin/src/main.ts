@@ -278,6 +278,25 @@ async function saveChangelogMeta(meta: ChangelogMeta): Promise<void> {
 }
 
 /**
+ * Migrate legacy commit format (message field) to new format (title/description)
+ */
+function migrateLegacyCommit(commit: any): Commit {
+  // If commit already has title field, it's in the new format
+  if ('title' in commit) {
+    return commit as Commit;
+  }
+
+  // Legacy commit with 'message' field - migrate to new format
+  // Use message as title, leave description empty
+  const { message, ...rest } = commit;
+  return {
+    ...rest,
+    title: message || 'Untitled',
+    description: undefined
+  } as Commit;
+}
+
+/**
  * Load all commits from storage chunks
  */
 async function loadCommits(): Promise<Commit[]> {
@@ -288,7 +307,9 @@ async function loadCommits(): Promise<Commit[]> {
     try {
       const chunk = await figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}${i}`);
       if (chunk && Array.isArray(chunk)) {
-        commits.push(...chunk);
+        // Migrate legacy commits
+        const migratedChunk = chunk.map(migrateLegacyCommit);
+        commits.push(...migratedChunk);
       }
     } catch (error) {
       console.error(`Error loading commit chunk ${i}:`, error);
@@ -432,11 +453,12 @@ export default function () {
 
   // Handle version creation
   once('CREATE_VERSION', async function (data: {
-    message: string;
+    title: string;
+    description?: string;
     versioningMode: 'semantic' | 'date-based';
     incrementType?: VersionIncrement;
   }) {
-    const { message, versioningMode, incrementType } = data;
+    const { title, description, versioningMode, incrementType } = data;
 
     try {
       // Calculate the version
@@ -462,7 +484,8 @@ export default function () {
       const commit: Commit = {
         id: `commit_${Date.now()}`,
         version,
-        message,
+        title,
+        description,
         author: {
           name: figma.currentUser?.name || 'Unknown'
         },
@@ -475,11 +498,14 @@ export default function () {
       // Save commit data
       await saveCommit(commit);
 
-      // Create version description with version number and message
-      const description = `${version} - ${message}`;
-
       // Save version to Figma history
-      await figma.saveVersionHistoryAsync(description);
+      // Figma's saveVersionHistoryAsync takes a single description string
+      // We'll format it as: "version - title" and include description if provided
+      const versionDescription = description
+        ? `${version} - ${title}\n\n${description}`
+        : `${version} - ${title}`;
+
+      await figma.saveVersionHistoryAsync(versionDescription);
 
       // Update stored version
       await updateCurrentVersion(version);

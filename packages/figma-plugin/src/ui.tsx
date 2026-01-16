@@ -222,15 +222,17 @@ function SettingsView({ onBack }: { onBack: () => void }) {
 }
 
 function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; hasToken: boolean }) {
-  const [message, setMessage] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [versioningMode, setVersioningMode] = useState<'semantic' | 'date-based'>('semantic');
   const [incrementType, setIncrementType] = useState<'major' | 'minor' | 'patch'>('patch');
   const [nextVersion, setNextVersion] = useState<string>('');
   const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const MAX_MESSAGE_LENGTH = 500;
-  const remainingChars = MAX_MESSAGE_LENGTH - message.length;
+  const MAX_TITLE_LENGTH = 100;
+  const MAX_DESCRIPTION_LENGTH = 500;
+  const remainingDescChars = MAX_DESCRIPTION_LENGTH - description.length;
 
   // Load saved versioning mode on mount
   useEffect(() => {
@@ -275,27 +277,40 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
   }, []);
 
   function handleCreateVersion() {
-    // Validate message
-    if (!message.trim()) {
-      setError('Commit message is required');
+    // Validate title
+    if (!title.trim()) {
+      setError('Title is required');
       return;
     }
-    if (message.length > MAX_MESSAGE_LENGTH) {
-      setError(`Message must be ${MAX_MESSAGE_LENGTH} characters or less`);
+    if (title.length > MAX_TITLE_LENGTH) {
+      setError(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
+      return;
+    }
+    if (description.length > MAX_DESCRIPTION_LENGTH) {
+      setError(`Description must be ${MAX_DESCRIPTION_LENGTH} characters or less`);
       return;
     }
 
     setError('');
     setIsCreating(true);
     emit('CREATE_VERSION', {
-      message,
+      title,
+      description: description.trim() || undefined,
       versioningMode,
       incrementType: versioningMode === 'semantic' ? incrementType : undefined
     });
   }
 
-  function handleMessageChange(value: string) {
-    setMessage(value);
+  function handleTitleChange(value: string) {
+    setTitle(value);
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
+  }
+
+  function handleDescriptionChange(value: string) {
+    setDescription(value);
     // Clear error when user starts typing
     if (error) {
       setError('');
@@ -346,16 +361,40 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       </Text>
       <VerticalSpace space="medium" />
 
-      {/* Commit Message */}
+      {/* Title */}
       <Text>
-        <Bold>Commit Message</Bold>
+        <Bold>Title</Bold>
+      </Text>
+      <VerticalSpace space="extraSmall" />
+      <Textbox
+        value={title}
+        onValueInput={handleTitleChange}
+        placeholder="Title"
+        disabled={isCreating}
+      />
+      <VerticalSpace space="extraSmall" />
+      <Muted>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Required</span>
+          <span style={{ color: title.length > MAX_TITLE_LENGTH ? 'var(--color-red)' : undefined }}>
+            {title.length}/{MAX_TITLE_LENGTH}
+          </span>
+        </div>
+      </Muted>
+
+      <VerticalSpace space="medium" />
+
+      {/* Description */}
+      <Text>
+        <Bold>Description</Bold>
       </Text>
       <VerticalSpace space="extraSmall" />
       <textarea
-        value={message}
-        onInput={(e) => handleMessageChange((e.target as HTMLTextAreaElement).value)}
-        placeholder="Describe what changed in this version..."
-        rows={3}
+        value={description}
+        onInput={(e) => handleDescriptionChange((e.target as HTMLTextAreaElement).value)}
+        placeholder="Describe what changed..."
+        rows={4}
+        disabled={isCreating}
         style={{
           width: '100%',
           padding: '8px',
@@ -366,16 +405,16 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
           backgroundColor: 'var(--color-bg)',
           color: 'var(--color-text)',
           resize: 'vertical',
-          minHeight: '60px',
+          minHeight: '80px',
           boxSizing: 'border-box'
         }}
       />
       <VerticalSpace space="extraSmall" />
       <Muted>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Required</span>
-          <span style={{ color: remainingChars < 0 ? 'var(--color-red)' : undefined }}>
-            {remainingChars} characters remaining
+          <span>Optional</span>
+          <span style={{ color: remainingDescChars < 0 ? 'var(--color-red)' : undefined }}>
+            {remainingDescChars} characters remaining
           </span>
         </div>
       </Muted>

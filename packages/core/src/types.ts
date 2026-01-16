@@ -78,8 +78,10 @@ export interface Commit {
   id: string;
   /** Version string (semantic like "1.2.3" or date-based like "2026-01-15") */
   version: string;
-  /** Commit message (max 500 characters) */
-  message: string;
+  /** Commit title - short summary of changes (required) */
+  title: string;
+  /** Commit description - detailed explanation of what changed (optional) */
+  description?: string;
   /** Commit author */
   author: Author;
   /** Commit creation timestamp */
@@ -101,7 +103,8 @@ export interface Commit {
 export interface ArchivedCommit {
   id: string;
   version: string;
-  message: string;
+  title: string;
+  description?: string;
   author: Author;
   timestamp: Date;
   /** Summary counts only, no full data */

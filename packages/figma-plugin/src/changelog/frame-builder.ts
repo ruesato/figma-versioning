@@ -76,26 +76,41 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
 }
 
 /**
- * Create message section with commit message
+ * Create title and description section
  */
 function createMessageSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode {
   const messageFrame = figma.createFrame();
-  messageFrame.name = 'Message';
+  messageFrame.name = 'Title and Description';
   messageFrame.layoutMode = 'VERTICAL';
   messageFrame.primaryAxisSizingMode = 'FIXED';
   messageFrame.counterAxisSizingMode = 'AUTO';
   messageFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
+  messageFrame.itemSpacing = 8;
   messageFrame.fills = [];
 
-  const messageText = createText(
-    commit.message,
-    14,
-    'Regular',
+  // Title (prominent)
+  const titleText = createText(
+    commit.title,
+    16,
+    'Bold',
     colors.text
   );
-  messageText.textAutoResize = 'HEIGHT';
-  messageText.resize(FRAME_WIDTH - PADDING * 2, messageText.height);
-  messageFrame.appendChild(messageText);
+  titleText.textAutoResize = 'HEIGHT';
+  titleText.resize(FRAME_WIDTH - PADDING * 2, titleText.height);
+  messageFrame.appendChild(titleText);
+
+  // Description (if provided)
+  if (commit.description) {
+    const descriptionText = createText(
+      commit.description,
+      14,
+      'Regular',
+      colors.text
+    );
+    descriptionText.textAutoResize = 'HEIGHT';
+    descriptionText.resize(FRAME_WIDTH - PADDING * 2, descriptionText.height);
+    messageFrame.appendChild(descriptionText);
+  }
 
   messageFrame.locked = true;
   return messageFrame;
