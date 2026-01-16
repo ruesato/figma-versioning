@@ -90,6 +90,8 @@ export interface Commit {
   annotations: Annotation[];
   /** Activity metrics at commit time */
   metrics: CommitMetrics;
+  /** Figma frame ID for the changelog entry (optional, for navigation) */
+  changelogFrameId?: string;
 }
 
 /**
