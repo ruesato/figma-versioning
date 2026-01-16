@@ -65,6 +65,7 @@ export function getOrCreateContainerFrame(): FrameNode {
 /**
  * Render a new changelog entry for the given commit
  * Inserts the entry at the top of the container (index 0) for reverse chronological order
+ * Navigates to the entry in the viewport for visual feedback
  *
  * @param commit - The commit data to render
  * @returns The created commit entry frame
@@ -76,6 +77,9 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
   // Get or create the container
   const container = getOrCreateContainerFrame();
 
+  // Get the changelog page
+  const changelogPage = getOrCreateChangelogPage();
+
   // Unlock container temporarily to add entry
   container.locked = false;
 
@@ -84,6 +88,16 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
 
   // Re-lock the container
   container.locked = true;
+
+  // Navigate to the new entry for visual feedback
+  // Switch to Changelog page
+  figma.currentPage = changelogPage;
+
+  // Scroll viewport to the entry
+  figma.viewport.scrollAndZoomIntoView([entryFrame]);
+
+  // Select the frame for visual feedback
+  figma.currentPage.selection = [entryFrame];
 
   return entryFrame;
 }
