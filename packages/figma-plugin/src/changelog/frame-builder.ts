@@ -102,6 +102,55 @@ function createMessageSection(commit: Commit, colors: ReturnType<typeof getTheme
 }
 
 /**
+ * Create a single comment item frame
+ */
+function createCommentItem(comment: import('@figma-versioning/core').Comment, colors: ReturnType<typeof getThemeColors>): FrameNode {
+  const commentFrame = figma.createFrame();
+  commentFrame.name = 'Comment Item';
+  commentFrame.layoutMode = 'VERTICAL';
+  commentFrame.primaryAxisSizingMode = 'FIXED';
+  commentFrame.counterAxisSizingMode = 'AUTO';
+  commentFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, 40);
+  commentFrame.itemSpacing = 4;
+  commentFrame.fills = [];
+
+  // Author and timestamp
+  const timestamp = new Date(comment.timestamp).toLocaleString();
+  const metaText = createText(
+    `${comment.author.name} • ${timestamp}`,
+    11,
+    'Regular',
+    colors.textSecondary
+  );
+  commentFrame.appendChild(metaText);
+
+  // Comment text
+  const commentText = createText(
+    comment.text,
+    12,
+    'Regular',
+    colors.text
+  );
+  commentText.textAutoResize = 'HEIGHT';
+  commentText.resize(FRAME_WIDTH - PADDING * 2 - 16, commentText.height);
+  commentFrame.appendChild(commentText);
+
+  // Node ID (if available)
+  if (comment.nodeId) {
+    const nodeIdText = createText(
+      `Node: ${comment.nodeId}`,
+      10,
+      'Regular',
+      colors.textSecondary
+    );
+    commentFrame.appendChild(nodeIdText);
+  }
+
+  commentFrame.locked = true;
+  return commentFrame;
+}
+
+/**
  * Create comments section (conditional)
  */
 function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
@@ -131,6 +180,12 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
     colors.textSecondary
   );
   commentsFrame.appendChild(titleText);
+
+  // Add individual comment items
+  for (const comment of commit.comments) {
+    const commentItem = createCommentItem(comment, colors);
+    commentsFrame.appendChild(commentItem);
+  }
 
   commentsFrame.locked = true;
   return commentsFrame;
