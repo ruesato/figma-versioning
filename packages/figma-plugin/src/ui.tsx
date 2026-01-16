@@ -4,6 +4,7 @@ import { emit, on } from '@create-figma-plugin/utilities';
 import { useState, useEffect } from 'preact/hooks';
 
 import './output.css';
+import { HistogramPanel } from './components/HistogramPanel';
 
 function OnboardingView({ onComplete, onSkip }: { onComplete: () => void; onSkip: () => void }) {
   const [pat, setPat] = useState('');
@@ -355,6 +356,10 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
           <VerticalSpace space="medium" />
         </>
       )}
+
+      {/* Activity Histogram */}
+      <HistogramPanel />
+      <VerticalSpace space="large" />
 
       <Text>
         <Bold>Create Commit</Bold>

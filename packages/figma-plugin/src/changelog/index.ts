@@ -16,3 +16,15 @@ export { getOrCreateChangelogPage, findChangelogPage, changelogPageExists } from
 
 // Frame builder exports (internal use, but available if needed)
 export { createCommitEntryFrame } from './frame-builder';
+
+// Histogram exports
+export {
+  calculateHistogramData,
+  calculateScale,
+  formatBarTooltip,
+  getHistogramColors,
+  renderHistogramOnChangelogPage,
+  navigateFromHistogramBar,
+  setupHistogramInteractivity,
+} from './histogram';
+export type { HistogramBar, HistogramConfig, HistogramColors } from './histogram';

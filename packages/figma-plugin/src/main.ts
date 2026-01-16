@@ -451,6 +451,54 @@ export default function () {
     emit('METRICS_COLLECTED', { metrics });
   });
 
+  // Handle recent commits retrieval for histogram
+  on('GET_RECENT_COMMITS', async function (data: { maxCommits?: number }) {
+    try {
+      const allCommits = await loadCommits();
+      const maxCommits = data.maxCommits || 50;
+      const recentCommits = allCommits.slice(0, maxCommits);
+      emit('RECENT_COMMITS', { commits: recentCommits });
+    } catch (error) {
+      console.error('Error loading recent commits:', error);
+      emit('RECENT_COMMITS', { commits: [] });
+    }
+  });
+
+  // Handle navigation to commit from histogram
+  on('NAVIGATE_TO_COMMIT', async function (data: { commitId: string }) {
+    try {
+      const commits = await loadCommits();
+      const commit = commits.find(c => c.id === data.commitId);
+
+      if (!commit || !commit.changelogFrameId) {
+        figma.notify('Changelog entry not found for this commit');
+        return;
+      }
+
+      // Find the changelog frame
+      const changelogFrame = figma.getNodeById(commit.changelogFrameId);
+
+      if (!changelogFrame) {
+        figma.notify('Changelog entry no longer exists');
+        return;
+      }
+
+      // Navigate to the changelog page
+      const { getOrCreateChangelogPage } = await import('./changelog');
+      const changelogPage = getOrCreateChangelogPage();
+      figma.currentPage = changelogPage;
+
+      // Scroll to the frame
+      figma.viewport.scrollAndZoomIntoView([changelogFrame]);
+      figma.currentPage.selection = [changelogFrame];
+
+      figma.notify(`Navigated to ${commit.version}`);
+    } catch (error) {
+      console.error('Error navigating to commit:', error);
+      figma.notify('Failed to navigate to commit', { error: true });
+    }
+  });
+
   // Handle version creation
   once('CREATE_VERSION', async function (data: {
     title: string;
