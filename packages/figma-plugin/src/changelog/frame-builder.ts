@@ -192,6 +192,43 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
 }
 
 /**
+ * Create a single annotation item frame
+ */
+function createAnnotationItem(annotation: import('@figma-versioning/core').Annotation, colors: ReturnType<typeof getThemeColors>): FrameNode {
+  const annotationFrame = figma.createFrame();
+  annotationFrame.name = 'Annotation Item';
+  annotationFrame.layoutMode = 'VERTICAL';
+  annotationFrame.primaryAxisSizingMode = 'FIXED';
+  annotationFrame.counterAxisSizingMode = 'AUTO';
+  annotationFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, 30);
+  annotationFrame.itemSpacing = 4;
+  annotationFrame.fills = [];
+
+  // Label text
+  const labelText = createText(
+    annotation.label,
+    12,
+    'Regular',
+    colors.text
+  );
+  labelText.textAutoResize = 'HEIGHT';
+  labelText.resize(FRAME_WIDTH - PADDING * 2 - 16, labelText.height);
+  annotationFrame.appendChild(labelText);
+
+  // Node ID reference
+  const nodeIdText = createText(
+    `Node: ${annotation.nodeId}${annotation.isPinned ? ' (Pinned)' : ''}`,
+    10,
+    'Regular',
+    colors.textSecondary
+  );
+  annotationFrame.appendChild(nodeIdText);
+
+  annotationFrame.locked = true;
+  return annotationFrame;
+}
+
+/**
  * Create annotations section (conditional)
  */
 function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
@@ -221,6 +258,12 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
     colors.textSecondary
   );
   annotationsFrame.appendChild(titleText);
+
+  // Add individual annotation items
+  for (const annotation of commit.annotations) {
+    const annotationItem = createAnnotationItem(annotation, colors);
+    annotationsFrame.appendChild(annotationItem);
+  }
 
   annotationsFrame.locked = true;
   return annotationsFrame;
