@@ -159,8 +159,8 @@ function createCommentItem(comment: import('@figma-versioning/core').Comment, co
   commentFrame.name = 'Comment Item';
   commentFrame.layoutMode = 'VERTICAL';
   commentFrame.primaryAxisSizingMode = 'AUTO';
-  commentFrame.counterAxisSizingMode = 'AUTO';
-  commentFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, 40);
+  commentFrame.counterAxisSizingMode = 'FIXED';
+  commentFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, commentFrame.height);
   commentFrame.itemSpacing = 4;
   commentFrame.fills = [];
 
@@ -212,8 +212,8 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
   commentsFrame.name = 'Comments';
   commentsFrame.layoutMode = 'VERTICAL';
   commentsFrame.primaryAxisSizingMode = 'AUTO';
-  commentsFrame.counterAxisSizingMode = 'AUTO';
-  commentsFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
+  commentsFrame.counterAxisSizingMode = 'FIXED';
+  commentsFrame.resize(FRAME_WIDTH - PADDING * 2, commentsFrame.height);
   commentsFrame.itemSpacing = 8;
   commentsFrame.fills = [{ type: 'SOLID', color: colors.surface }];
   commentsFrame.paddingTop = 8;
@@ -249,8 +249,8 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
   annotationFrame.name = 'Annotation Item';
   annotationFrame.layoutMode = 'VERTICAL';
   annotationFrame.primaryAxisSizingMode = 'AUTO';
-  annotationFrame.counterAxisSizingMode = 'AUTO';
-  annotationFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, 30);
+  annotationFrame.counterAxisSizingMode = 'FIXED';
+  annotationFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, annotationFrame.height);
   annotationFrame.itemSpacing = 4;
   annotationFrame.fills = [];
 
@@ -290,8 +290,8 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
   annotationsFrame.name = 'Annotations';
   annotationsFrame.layoutMode = 'VERTICAL';
   annotationsFrame.primaryAxisSizingMode = 'AUTO';
-  annotationsFrame.counterAxisSizingMode = 'AUTO';
-  annotationsFrame.resize(FRAME_WIDTH - PADDING * 2, 20);
+  annotationsFrame.counterAxisSizingMode = 'FIXED';
+  annotationsFrame.resize(FRAME_WIDTH - PADDING * 2, annotationsFrame.height);
   annotationsFrame.itemSpacing = 8;
   annotationsFrame.fills = [{ type: 'SOLID', color: colors.surface }];
   annotationsFrame.paddingTop = 8;
