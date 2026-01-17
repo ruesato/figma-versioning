@@ -295,32 +295,61 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
 
   // Display annotation properties (if any)
   if (annotation.properties && Object.keys(annotation.properties).length > 0) {
-    const properties = annotation.properties;
+    const annotationProps = annotation.properties;
 
-    for (const [propertyName, propertyValue] of Object.entries(properties)) {
-      // Skip invalid or empty properties
-      if (propertyValue === null || propertyValue === undefined) {
-        continue;
+    // Check if there's a nested 'properties' array (actual pinned properties from Figma)
+    const pinnedProperties = annotationProps.properties as Array<{ type: string; [key: string]: unknown }> | undefined;
+
+    if (Array.isArray(pinnedProperties) && pinnedProperties.length > 0) {
+      // Display properties from the pinned properties array
+      for (const prop of pinnedProperties) {
+        if (!prop || !prop.type) continue;
+
+        const propertyName = prop.type;
+        // The value might be in a 'value' field or directly in the object
+        const propertyValue = 'value' in prop ? prop.value : prop;
+
+        const label = getPropertyLabel(propertyName);
+        const formattedValue = formatPropertyValue(propertyValue, propertyName);
+
+        const propertyText = createText(
+          `${label}: ${formattedValue}`,
+          10,
+          'Regular',
+          colors.textSecondary
+        );
+        propertyText.textAutoResize = 'HEIGHT';
+        propertyText.resize(FRAME_WIDTH - PADDING * 2 - 16, propertyText.height);
+        annotationFrame.appendChild(propertyText);
       }
+    } else {
+      // Fallback: display top-level properties (skip metadata fields)
+      for (const [propertyName, propertyValue] of Object.entries(annotationProps)) {
+        // Skip invalid or empty properties
+        if (propertyValue === null || propertyValue === undefined) {
+          continue;
+        }
 
-      // Skip properties that are already displayed elsewhere
-      if (propertyName === 'labelMarkdown' || propertyName === 'label') {
-        continue;
+        // Skip properties that are metadata or already displayed
+        if (propertyName === 'labelMarkdown' || propertyName === 'label' ||
+            propertyName === 'properties' || propertyName === 'nodeId' ||
+            propertyName === 'isPinned') {
+          continue;
+        }
+
+        const label = getPropertyLabel(propertyName);
+        const formattedValue = formatPropertyValue(propertyValue, propertyName);
+
+        const propertyText = createText(
+          `${label}: ${formattedValue}`,
+          10,
+          'Regular',
+          colors.textSecondary
+        );
+        propertyText.textAutoResize = 'HEIGHT';
+        propertyText.resize(FRAME_WIDTH - PADDING * 2 - 16, propertyText.height);
+        annotationFrame.appendChild(propertyText);
       }
-
-      const label = getPropertyLabel(propertyName);
-      const formattedValue = formatPropertyValue(propertyValue, propertyName);
-
-      // Create property text in "Label: value" format
-      const propertyText = createText(
-        `${label}: ${formattedValue}`,
-        10,
-        'Regular',
-        colors.textSecondary
-      );
-      propertyText.textAutoResize = 'HEIGHT';
-      propertyText.resize(FRAME_WIDTH - PADDING * 2 - 16, propertyText.height);
-      annotationFrame.appendChild(propertyText);
     }
   }
 
