@@ -159,16 +159,29 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
 /**
  * Recursively collect annotations from a node and its children
  */
-function collectAnnotationsFromNode(node: SceneNode, annotations: Annotation[]): void {
+async function collectAnnotationsFromNode(node: SceneNode, annotations: Annotation[]): Promise<void> {
   // Check if node has annotations
   if ('annotations' in node && Array.isArray(node.annotations)) {
     for (const annotation of node.annotations) {
+      // Fetch category label if categoryId exists
+      let categoryLabel: string | undefined;
+      if (annotation.categoryId) {
+        try {
+          const category = await figma.annotations.getAnnotationCategoryByIdAsync(annotation.categoryId);
+          categoryLabel = category?.label;
+        } catch (error) {
+          console.error('Error fetching annotation category:', error);
+        }
+      }
+
       annotations.push({
         label: annotation.label || '',
         nodeId: node.id,
         isPinned: true, // Annotations in the Plugin API are considered "pinned"
         properties: {
-          ...annotation
+          ...annotation,
+          // Add category label if available
+          ...(categoryLabel && { category: categoryLabel })
         }
       });
     }
@@ -177,7 +190,7 @@ function collectAnnotationsFromNode(node: SceneNode, annotations: Annotation[]):
   // Recursively process children if the node has them
   if ('children' in node) {
     for (const child of node.children) {
-      collectAnnotationsFromNode(child, annotations);
+      await collectAnnotationsFromNode(child, annotations);
     }
   }
 }
@@ -185,13 +198,13 @@ function collectAnnotationsFromNode(node: SceneNode, annotations: Annotation[]):
 /**
  * Collect all annotations from the current page
  */
-function collectAnnotations(): Annotation[] {
+async function collectAnnotations(): Promise<Annotation[]> {
   const annotations: Annotation[] = [];
   const currentPage = figma.currentPage;
 
   // Traverse all nodes on the current page
   for (const node of currentPage.children) {
-    collectAnnotationsFromNode(node, annotations);
+    await collectAnnotationsFromNode(node, annotations);
   }
 
   return annotations;
@@ -440,8 +453,8 @@ export default function () {
   });
 
   // Handle annotation collection
-  on('COLLECT_ANNOTATIONS', function () {
-    const annotations = collectAnnotations();
+  on('COLLECT_ANNOTATIONS', async function () {
+    const annotations = await collectAnnotations();
     emit('ANNOTATIONS_COLLECTED', { annotations });
   });
 
@@ -523,7 +536,7 @@ export default function () {
       const comments = commentsResult.success ? commentsResult.comments || [] : [];
 
       // Collect annotations
-      const annotations = collectAnnotations();
+      const annotations = await collectAnnotations();
 
       // Collect metrics
       const feedbackCount = comments.length + annotations.length;

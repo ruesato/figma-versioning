@@ -53,6 +53,9 @@ const PROPERTY_LABEL_MAP: Record<string, string> = {
 
   // Component properties
   mainComponent: 'Main Component',
+
+  // Annotation metadata
+  category: 'Category',
 };
 
 /**

@@ -333,7 +333,7 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
         // Skip properties that are metadata or already displayed
         if (propertyName === 'labelMarkdown' || propertyName === 'label' ||
             propertyName === 'properties' || propertyName === 'nodeId' ||
-            propertyName === 'isPinned') {
+            propertyName === 'isPinned' || propertyName === 'categoryId') {
           continue;
         }
 
