@@ -406,26 +406,32 @@ export async function renderHistogramOnChangelogPage(
   // Calculate histogram data
   const bars = calculateHistogramData(commits, fullConfig);
 
-  // Create histogram frame
-  const histogramFrame = createHistogramFrame(bars, histogramColors, fullConfig);
-
-  // Position histogram above the changelog entries container
-  histogramFrame.x = 100;
-  histogramFrame.y = 100;
-
-  // Get or create changelog page
+  // Get or create changelog page first
   const { getOrCreateChangelogPage } = await import('./page-manager');
   const changelogPage = getOrCreateChangelogPage();
 
   // Remove existing histogram if present
+  // Collect nodes to remove first to avoid modifying array during iteration
+  const nodesToRemove: SceneNode[] = [];
   for (const node of changelogPage.children) {
     if (node.type === 'FRAME' && node.name === 'Activity Histogram') {
-      node.remove();
+      nodesToRemove.push(node);
     }
   }
+  // Remove collected nodes
+  for (const node of nodesToRemove) {
+    node.remove();
+  }
 
-  // Add to page
+  // Create histogram frame
+  const histogramFrame = createHistogramFrame(bars, histogramColors, fullConfig);
+
+  // Add to page first
   changelogPage.appendChild(histogramFrame);
+
+  // Then position histogram above the changelog entries container
+  histogramFrame.x = 100;
+  histogramFrame.y = 100;
 
   return histogramFrame;
 }
