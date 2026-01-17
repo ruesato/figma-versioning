@@ -7,6 +7,8 @@
 
 import type { Commit } from '@figma-versioning/core';
 import { detectTheme, getThemeColors } from './theme';
+import { getPropertyLabel } from './property-labels';
+import { formatPropertyValue } from './property-formatter';
 
 const FRAME_WIDTH = 600;
 const PADDING = 16;
@@ -273,6 +275,32 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
     colors.textSecondary
   );
   annotationFrame.appendChild(nodeIdText);
+
+  // Display annotation properties (if any)
+  if (annotation.properties && Object.keys(annotation.properties).length > 0) {
+    const properties = annotation.properties;
+
+    for (const [propertyName, propertyValue] of Object.entries(properties)) {
+      // Skip invalid or empty properties
+      if (propertyValue === null || propertyValue === undefined) {
+        continue;
+      }
+
+      const label = getPropertyLabel(propertyName);
+      const formattedValue = formatPropertyValue(propertyValue, propertyName);
+
+      // Create property text in "Label: value" format
+      const propertyText = createText(
+        `${label}: ${formattedValue}`,
+        10,
+        'Regular',
+        colors.textSecondary
+      );
+      propertyText.textAutoResize = 'HEIGHT';
+      propertyText.resize(FRAME_WIDTH - PADDING * 2 - 16, propertyText.height);
+      annotationFrame.appendChild(propertyText);
+    }
+  }
 
   annotationFrame.locked = true;
   return annotationFrame;
