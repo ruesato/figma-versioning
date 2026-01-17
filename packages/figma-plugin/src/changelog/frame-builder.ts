@@ -272,9 +272,10 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
   annotationFrame.itemSpacing = 4;
   annotationFrame.fills = [];
 
-  // Label text
+  // Label text - use labelMarkdown if available in properties, otherwise use label
+  const labelContent = (annotation.properties?.labelMarkdown as string) || annotation.label;
   const labelText = createText(
-    annotation.label,
+    labelContent,
     12,
     'Regular',
     colors.text
@@ -299,6 +300,11 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
     for (const [propertyName, propertyValue] of Object.entries(properties)) {
       // Skip invalid or empty properties
       if (propertyValue === null || propertyValue === undefined) {
+        continue;
+      }
+
+      // Skip properties that are already displayed elsewhere
+      if (propertyName === 'labelMarkdown' || propertyName === 'label') {
         continue;
       }
 
