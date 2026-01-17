@@ -245,6 +245,22 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
 
 /**
  * Create a single annotation item frame
+ *
+ * Renders an annotation with:
+ * - Label text (primary, 12px)
+ * - Node ID reference (secondary, 10px)
+ * - Pinned properties (if any) displayed vertically (secondary, 10px)
+ *
+ * Property Rendering:
+ * - Each property is displayed as "Label: value" format
+ * - Property names are converted to human-readable labels (e.g., "fontSize" → "Font Size")
+ * - Values are formatted based on type (colors as hex, numbers with units, etc.)
+ * - Properties are displayed in the order they appear in annotation.properties
+ * - Null/undefined properties are skipped
+ *
+ * @param annotation - The annotation data to render
+ * @param colors - Theme colors for text and backgrounds
+ * @returns A frame containing the annotation item
  */
 function createAnnotationItem(annotation: import('@figma-versioning/core').Annotation, colors: ReturnType<typeof getThemeColors>): FrameNode {
   const annotationFrame = figma.createFrame();
