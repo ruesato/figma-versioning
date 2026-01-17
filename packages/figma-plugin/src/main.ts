@@ -566,6 +566,16 @@ export default function () {
         // Update commit with frame ID and re-save
         commit.changelogFrameId = entryFrame.id;
         await saveCommit(commit);
+
+        // Render/update histogram with all commits
+        try {
+          const allCommits = await loadCommits();
+          const { renderHistogramOnChangelogPage } = await import('./changelog');
+          await renderHistogramOnChangelogPage(allCommits);
+        } catch (histogramError) {
+          console.error('Failed to render histogram:', histogramError);
+          // Don't notify user - histogram is secondary
+        }
       } catch (renderError) {
         // Log error but don't fail the entire commit
         console.error('Failed to render changelog entry:', renderError);
