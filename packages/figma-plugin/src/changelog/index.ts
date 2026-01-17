@@ -31,3 +31,4 @@ export type { HistogramBar, HistogramConfig, HistogramColors } from './histogram
 
 // Property utilities exports
 export { getPropertyLabel, getSupportedPropertyNames, hasPropertyLabel } from './property-labels';
+export { formatPropertyValue, formatProperty } from './property-formatter';
