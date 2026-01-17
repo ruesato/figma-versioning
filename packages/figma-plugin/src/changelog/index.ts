@@ -28,3 +28,6 @@ export {
   setupHistogramInteractivity,
 } from './histogram';
 export type { HistogramBar, HistogramConfig, HistogramColors } from './histogram';
+
+// Property utilities exports
+export { getPropertyLabel, getSupportedPropertyNames, hasPropertyLabel } from './property-labels';
