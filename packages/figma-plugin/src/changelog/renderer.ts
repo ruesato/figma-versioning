@@ -17,7 +17,7 @@ const ENTRY_SPACING = 32;
 
 /**
  * Get or create the container frame for changelog entries
- * Creates a vertical auto-layout frame at a fixed position if it doesn't exist
+ * Creates a horizontal auto-layout frame at a fixed position if it doesn't exist
  *
  * @returns The container frame for changelog entries
  */
@@ -41,7 +41,7 @@ export function getOrCreateContainerFrame(): FrameNode {
   container.y = CONTAINER_Y;
 
   // Configure auto-layout
-  container.layoutMode = 'VERTICAL';
+  container.layoutMode = 'HORIZONTAL';
   container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'AUTO';
   container.itemSpacing = ENTRY_SPACING;
@@ -64,7 +64,7 @@ export function getOrCreateContainerFrame(): FrameNode {
 
 /**
  * Render a new changelog entry for the given commit
- * Inserts the entry at the top of the container (index 0) for reverse chronological order
+ * Inserts the entry at the start of the container (index 0) for reverse chronological order
  * Navigates to the entry in the viewport for visual feedback
  *
  * @param commit - The commit data to render
@@ -83,7 +83,7 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
   // Unlock container temporarily to add entry
   container.locked = false;
 
-  // Insert at top (index 0) for reverse chronological order (newest first)
+  // Insert at start (index 0) for reverse chronological order (newest first)
   container.insertChild(0, entryFrame);
 
   // Re-lock the container
