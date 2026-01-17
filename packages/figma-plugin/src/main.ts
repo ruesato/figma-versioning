@@ -478,7 +478,8 @@ export default function () {
       // Find the changelog frame
       const changelogFrame = figma.getNodeById(commit.changelogFrameId);
 
-      if (!changelogFrame) {
+      // Type guard: ensure it's a SceneNode
+      if (!changelogFrame || !('type' in changelogFrame) || changelogFrame.type === 'DOCUMENT') {
         figma.notify('Changelog entry no longer exists');
         return;
       }
@@ -489,8 +490,8 @@ export default function () {
       figma.currentPage = changelogPage;
 
       // Scroll to the frame
-      figma.viewport.scrollAndZoomIntoView([changelogFrame]);
-      figma.currentPage.selection = [changelogFrame];
+      figma.viewport.scrollAndZoomIntoView([changelogFrame as SceneNode]);
+      figma.currentPage.selection = [changelogFrame as SceneNode];
 
       figma.notify(`Navigated to ${commit.version}`);
     } catch (error) {

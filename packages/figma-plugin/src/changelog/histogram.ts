@@ -7,6 +7,7 @@
  */
 
 import type { Commit } from '@figma-versioning/core';
+import { getOrCreateChangelogPage } from './page-manager';
 
 /**
  * Data structure for a single histogram bar
@@ -464,15 +465,15 @@ export function navigateFromHistogramBar(): boolean {
         if (changelogFrameId) {
           const changelogFrame = figma.getNodeById(changelogFrameId);
 
-          if (changelogFrame) {
+          // Type guard: ensure it's a SceneNode
+          if (changelogFrame && 'type' in changelogFrame && changelogFrame.type !== 'DOCUMENT') {
             // Ensure we're on the changelog page
-            const { getOrCreateChangelogPage } = require('./page-manager');
             const changelogPage = getOrCreateChangelogPage();
             figma.currentPage = changelogPage;
 
             // Navigate to the changelog entry
-            figma.viewport.scrollAndZoomIntoView([changelogFrame]);
-            figma.currentPage.selection = [changelogFrame];
+            figma.viewport.scrollAndZoomIntoView([changelogFrame as SceneNode]);
+            figma.currentPage.selection = [changelogFrame as SceneNode];
 
             return true;
           }
