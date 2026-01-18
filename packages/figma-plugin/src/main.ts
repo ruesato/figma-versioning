@@ -9,9 +9,6 @@ const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
-// Cache file key at plugin start since figma.fileKey may not be available later
-let cachedFileKey: string | null = null;
-
 /**
  * Check if PAT exists in storage
  */
@@ -109,7 +106,7 @@ async function updateCurrentVersion(version: string): Promise<void> {
 /**
  * Fetch comments from Figma REST API
  */
-async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
+async function fetchComments(fileKey: string | null | undefined): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
   try {
     // Get the PAT from storage
     const pat = await getPat();
@@ -118,25 +115,8 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
       return { success: false, error: 'No Personal Access Token found. Please configure it in settings.' };
     }
 
-    // Use cached file key or try to get current file key
-    let fileKey = cachedFileKey || figma.fileKey;
-
-    // Debug logging for file key source
-    if (cachedFileKey) {
-      console.log('[Comments] Using cached file key');
-    } else if (figma.fileKey) {
-      console.log('[Comments] Using figma.fileKey');
-      cachedFileKey = figma.fileKey;
-    }
-
     if (!fileKey) {
-      console.error('[Comments] Unable to determine file key');
-      console.error('[Comments] Plugin context info:', {
-        cachedFileKey: !!cachedFileKey,
-        figmaFileKey: !!figma.fileKey,
-        hasCurrentPage: !!figma.currentPage,
-        figmaProperties: Object.keys(figma).filter(k => k.includes('file') || k.includes('File'))
-      });
+      console.error('[Comments] No file key provided');
       return { success: false, error: 'Unable to determine current file. Please ensure a file is open.' };
     }
 
@@ -436,14 +416,6 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
 }
 
 export default function () {
-  // Initialize: Cache file key at plugin startup
-  if (figma.fileKey) {
-    cachedFileKey = figma.fileKey;
-    console.log(`[Init] Cached file key: ${cachedFileKey}`);
-  } else {
-    console.warn('[Init] figma.fileKey not available at startup');
-  }
-
   // Handle PAT status check
   on('CHECK_PAT', async function () {
     const hasToken = await checkPatExists();
@@ -501,8 +473,8 @@ export default function () {
   });
 
   // Handle comment fetching
-  on('FETCH_COMMENTS', async function () {
-    const result = await fetchComments();
+  on('FETCH_COMMENTS', async function (data: { fileKey?: string } = {}) {
+    const result = await fetchComments(data.fileKey);
     emit('COMMENTS_FETCHED', result);
   });
 
@@ -573,8 +545,9 @@ export default function () {
     description?: string;
     versioningMode: 'semantic' | 'date-based';
     incrementType?: VersionIncrement;
+    fileKey?: string;
   }) {
-    const { title, description, versioningMode, incrementType } = data;
+    const { title, description, versioningMode, incrementType, fileKey } = data;
 
     try {
       // Calculate the version
@@ -585,8 +558,8 @@ export default function () {
         version = await calculateNextSemanticVersion(incrementType || 'patch');
       }
 
-      // Fetch comments (if PAT is available)
-      const commentsResult = await fetchComments();
+      // Fetch comments (if PAT is available and fileKey provided)
+      const commentsResult = await fetchComments(fileKey);
       const comments = commentsResult.success ? commentsResult.comments || [] : [];
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
