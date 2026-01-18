@@ -9,6 +9,16 @@ const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
+// Lazy file key getter - try to get it when needed
+function getFileKey(): string | null {
+  try {
+    return figma.fileKey || null;
+  } catch (error) {
+    console.error('[FileKey] Error accessing figma.fileKey:', error);
+    return null;
+  }
+}
+
 /**
  * Check if PAT exists in storage
  */
@@ -106,7 +116,7 @@ async function updateCurrentVersion(version: string): Promise<void> {
 /**
  * Fetch comments from Figma REST API
  */
-async function fetchComments(fileKey: string | null | undefined): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
+async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
   try {
     // Get the PAT from storage
     const pat = await getPat();
@@ -115,8 +125,10 @@ async function fetchComments(fileKey: string | null | undefined): Promise<{ succ
       return { success: false, error: 'No Personal Access Token found. Please configure it in settings.' };
     }
 
+    // Get file key when needed
+    const fileKey = getFileKey();
     if (!fileKey) {
-      console.error('[Comments] No file key provided');
+      console.error('[Comments] Unable to determine file key - figma.fileKey is not available');
       return { success: false, error: 'Unable to determine current file. Please ensure a file is open.' };
     }
 
@@ -473,8 +485,8 @@ export default function () {
   });
 
   // Handle comment fetching
-  on('FETCH_COMMENTS', async function (data: { fileKey?: string } = {}) {
-    const result = await fetchComments(data.fileKey);
+  on('FETCH_COMMENTS', async function () {
+    const result = await fetchComments();
     emit('COMMENTS_FETCHED', result);
   });
 
@@ -545,9 +557,8 @@ export default function () {
     description?: string;
     versioningMode: 'semantic' | 'date-based';
     incrementType?: VersionIncrement;
-    fileKey?: string;
   }) {
-    const { title, description, versioningMode, incrementType, fileKey } = data;
+    const { title, description, versioningMode, incrementType } = data;
 
     try {
       // Calculate the version
@@ -558,8 +569,8 @@ export default function () {
         version = await calculateNextSemanticVersion(incrementType || 'patch');
       }
 
-      // Fetch comments (if PAT is available and fileKey provided)
-      const commentsResult = await fetchComments(fileKey);
+      // Fetch comments (if PAT is available)
+      const commentsResult = await fetchComments();
       const comments = commentsResult.success ? commentsResult.comments || [] : [];
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);

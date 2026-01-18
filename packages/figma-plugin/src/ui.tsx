@@ -295,18 +295,12 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     setError('');
     setIsCreating(true);
 
-    // Get file key from figma object (available in UI context)
-    const fileKey = figma.fileKey;
-    if (!fileKey) {
-      console.warn('[UI] Warning: fileKey not available from figma object');
-    }
-
+    // Emit CREATE_VERSION - main plugin will handle getting file key
     emit('CREATE_VERSION', {
       title,
       description: description.trim() || undefined,
       versioningMode,
-      incrementType: versioningMode === 'semantic' ? incrementType : undefined,
-      fileKey: fileKey || undefined  // Pass file key to main plugin
+      incrementType: versioningMode === 'semantic' ? incrementType : undefined
     });
   }
 
