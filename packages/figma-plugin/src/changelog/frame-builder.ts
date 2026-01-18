@@ -284,11 +284,11 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
   labelText.resize(FRAME_WIDTH - PADDING * 2 - 16, labelText.height);
   annotationFrame.appendChild(labelText);
 
-  // Node reference - use node name if available, fallback to ID
+  // Layer reference - use node name if available, fallback to ID
   const nodeName = annotation.properties?.nodeName as string | undefined;
   const nodeDisplayText = nodeName || annotation.nodeId;
   const nodeIdText = createText(
-    `Node: ${nodeDisplayText}${annotation.isPinned ? ' (Pinned)' : ''}`,
+    `Layer: ${nodeDisplayText}${annotation.isPinned ? ' (Pinned)' : ''}`,
     10,
     'Regular',
     colors.textSecondary
