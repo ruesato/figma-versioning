@@ -9,6 +9,9 @@ const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
+// Cache file key at plugin start since figma.fileKey may not be available later
+let cachedFileKey: string | null = null;
+
 /**
  * Check if PAT exists in storage
  */
@@ -115,13 +118,29 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
       return { success: false, error: 'No Personal Access Token found. Please configure it in settings.' };
     }
 
-    // Get the current file key
-    const fileKey = figma.fileKey;
-    if (!fileKey) {
-      console.error('[Comments] Unable to determine current file key');
-      return { success: false, error: 'Unable to determine current file.' };
+    // Use cached file key or try to get current file key
+    let fileKey = cachedFileKey || figma.fileKey;
+
+    // Debug logging for file key source
+    if (cachedFileKey) {
+      console.log('[Comments] Using cached file key');
+    } else if (figma.fileKey) {
+      console.log('[Comments] Using figma.fileKey');
+      cachedFileKey = figma.fileKey;
     }
 
+    if (!fileKey) {
+      console.error('[Comments] Unable to determine file key');
+      console.error('[Comments] Plugin context info:', {
+        cachedFileKey: !!cachedFileKey,
+        figmaFileKey: !!figma.fileKey,
+        hasCurrentPage: !!figma.currentPage,
+        figmaProperties: Object.keys(figma).filter(k => k.includes('file') || k.includes('File'))
+      });
+      return { success: false, error: 'Unable to determine current file. Please ensure a file is open.' };
+    }
+
+    console.log(`[Comments] File key: ${fileKey}`);
     console.log('[Comments] Fetching comments from Figma API...');
 
     // Fetch comments from Figma API
@@ -417,6 +436,14 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
 }
 
 export default function () {
+  // Initialize: Cache file key at plugin startup
+  if (figma.fileKey) {
+    cachedFileKey = figma.fileKey;
+    console.log(`[Init] Cached file key: ${cachedFileKey}`);
+  } else {
+    console.warn('[Init] figma.fileKey not available at startup');
+  }
+
   // Handle PAT status check
   on('CHECK_PAT', async function () {
     const hasToken = await checkPatExists();
