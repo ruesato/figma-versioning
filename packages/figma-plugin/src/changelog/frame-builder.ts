@@ -284,9 +284,11 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
   labelText.resize(FRAME_WIDTH - PADDING * 2 - 16, labelText.height);
   annotationFrame.appendChild(labelText);
 
-  // Node ID reference
+  // Node reference - use node name if available, fallback to ID
+  const nodeName = annotation.properties?.nodeName as string | undefined;
+  const nodeDisplayText = nodeName || annotation.nodeId;
   const nodeIdText = createText(
-    `Node: ${annotation.nodeId}${annotation.isPinned ? ' (Pinned)' : ''}`,
+    `Node: ${nodeDisplayText}${annotation.isPinned ? ' (Pinned)' : ''}`,
     10,
     'Regular',
     colors.textSecondary
@@ -333,7 +335,8 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
         // Skip properties that are metadata or already displayed
         if (propertyName === 'labelMarkdown' || propertyName === 'label' ||
             propertyName === 'properties' || propertyName === 'nodeId' ||
-            propertyName === 'isPinned' || propertyName === 'categoryId') {
+            propertyName === 'isPinned' || propertyName === 'categoryId' ||
+            propertyName === 'nodeName' || propertyName === 'category') {
           continue;
         }
 

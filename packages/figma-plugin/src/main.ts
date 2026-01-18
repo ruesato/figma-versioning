@@ -181,7 +181,9 @@ async function collectAnnotationsFromNode(node: SceneNode, annotations: Annotati
         properties: {
           ...annotation,
           // Add category label if available
-          ...(categoryLabel && { category: categoryLabel })
+          ...(categoryLabel && { category: categoryLabel }),
+          // Add node name for display
+          nodeName: node.name
         }
       });
     }
