@@ -207,8 +207,11 @@ function createCommentItem(comment: import('@figma-versioning/core').Comment, co
  */
 function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
   if (commit.comments.length === 0) {
+    console.log(`[Changelog] No comments for version ${commit.version}`);
     return null;
   }
+
+  console.log(`[Changelog] Rendering ${commit.comments.length} comments for version ${commit.version}`);
 
   const commentsFrame = figma.createFrame();
   commentsFrame.name = 'Comments';
@@ -408,6 +411,13 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
  * @returns A locked frame containing the commit entry
  */
 export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode> {
+  console.log(`[Changelog] Creating commit entry frame for version ${commit.version}`, {
+    hasComments: commit.comments && commit.comments.length > 0,
+    commentCount: commit.comments?.length || 0,
+    hasAnnotations: commit.annotations && commit.annotations.length > 0,
+    annotationCount: commit.annotations?.length || 0
+  });
+
   // Load fonts
   await loadInterFont();
 

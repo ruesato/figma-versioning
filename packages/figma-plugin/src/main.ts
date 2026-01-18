@@ -111,14 +111,18 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
     // Get the PAT from storage
     const pat = await getPat();
     if (!pat) {
+      console.warn('[Comments] No PAT configured - skipping comment fetch');
       return { success: false, error: 'No Personal Access Token found. Please configure it in settings.' };
     }
 
     // Get the current file key
     const fileKey = figma.fileKey;
     if (!fileKey) {
+      console.error('[Comments] Unable to determine current file key');
       return { success: false, error: 'Unable to determine current file.' };
     }
+
+    console.log('[Comments] Fetching comments from Figma API...');
 
     // Fetch comments from Figma API
     const response = await fetch(`https://api.figma.com/v1/files/${fileKey}/comments`, {
@@ -128,16 +132,20 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
     });
 
     if (!response.ok) {
+      const errorMsg = `API error: ${response.status} ${response.statusText}`;
+      console.error(`[Comments] ${errorMsg}`);
       if (response.status === 403) {
         return { success: false, error: 'Invalid or expired token. Please update your PAT in settings.' };
       }
-      return { success: false, error: `API error: ${response.statusText}` };
+      return { success: false, error: errorMsg };
     }
 
     const data = await response.json();
+    const rawComments = data.comments || [];
+    console.log(`[Comments] Received ${rawComments.length} comments from API`);
 
     // Transform Figma comments to our format
-    const comments: Comment[] = (data.comments || []).map((comment: any) => ({
+    const comments: Comment[] = rawComments.map((comment: any) => ({
       author: {
         name: comment.user?.handle || 'Unknown',
         email: comment.user?.email
@@ -147,11 +155,14 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
       nodeId: comment.client_meta?.node_id
     }));
 
+    console.log(`[Comments] Successfully transformed ${comments.length} comments`);
     return { success: true, comments };
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Failed to fetch comments';
+    console.error(`[Comments] Error: ${errorMsg}`, error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch comments'
+      error: errorMsg
     };
   }
 }
@@ -345,6 +356,11 @@ async function saveCommit(commit: Commit): Promise<void> {
   // Add new commit to the beginning (most recent first)
   commits.unshift(commit);
 
+  console.log(`[Storage] Saving commit ${commit.id} (version: ${commit.version})`, {
+    hasComments: commit.comments && commit.comments.length > 0,
+    commentCount: commit.comments?.length || 0
+  });
+
   // Split commits into chunks (10 commits per chunk)
   const CHUNK_SIZE = 10;
   const chunks: Commit[][] = [];
@@ -356,6 +372,15 @@ async function saveCommit(commit: Commit): Promise<void> {
   // Save each chunk
   for (let i = 0; i < chunks.length; i++) {
     await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, chunks[i]);
+  }
+
+  // Verify the commit was saved (read back and validate)
+  const savedChunk = await figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}0`);
+  const savedCommit = savedChunk?.[0];
+  if (savedCommit && savedCommit.id === commit.id) {
+    console.log(`[Storage] ✓ Commit saved successfully with ${savedCommit.comments?.length || 0} comments`);
+  } else {
+    console.warn(`[Storage] ⚠ Could not verify commit save`);
   }
 
   // Update metadata
@@ -536,6 +561,11 @@ export default function () {
       // Fetch comments (if PAT is available)
       const commentsResult = await fetchComments();
       const comments = commentsResult.success ? commentsResult.comments || [] : [];
+      if (!commentsResult.success && commentsResult.error) {
+        console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
+      } else if (comments.length > 0) {
+        console.log(`[Version] Successfully fetched ${comments.length} comments for version ${version}`);
+      }
 
       // Collect annotations
       const annotations = await collectAnnotations();
@@ -543,6 +573,7 @@ export default function () {
       // Collect metrics
       const feedbackCount = comments.length + annotations.length;
       const metrics = collectMetrics(feedbackCount);
+      console.log(`[Version] Feedback count: ${feedbackCount} (${comments.length} comments, ${annotations.length} annotations)`);
 
       // Create commit object
       const commit: Commit = {
