@@ -116,7 +116,7 @@ async function updateCurrentVersion(version: string): Promise<void> {
 /**
  * Fetch comments from Figma REST API
  */
-async function fetchComments(since?: Date): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
+async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
   try {
     // Get the PAT from storage
     const pat = await getPat();
@@ -166,14 +166,8 @@ async function fetchComments(since?: Date): Promise<{ success: boolean; comments
       nodeId: comment.client_meta?.node_id
     }));
 
-    // Filter to only comments created after the previous version timestamp
-    const sinceMs = since ? since.getTime() : 0;
-    const filtered = since
-      ? comments.filter(c => new Date(c.timestamp).getTime() > sinceMs)
-      : comments;
-
-    console.log(`[Comments] Successfully transformed ${comments.length} comments (${filtered.length} after filtering)`);
-    return { success: true, comments: filtered };
+    console.log(`[Comments] Successfully transformed ${comments.length} comments`);
+    return { success: true, comments };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Failed to fetch comments';
     console.error(`[Comments] Error: ${errorMsg}`, error);
@@ -238,6 +232,21 @@ async function collectAnnotations(): Promise<Annotation[]> {
   }
 
   return annotations;
+}
+
+/**
+ * Generate a fingerprint for a comment to detect duplicates across versions
+ */
+function commentFingerprint(c: Comment): string {
+  return `${c.author.name}|${c.text}|${c.nodeId || ''}`;
+}
+
+/**
+ * Filter comments to only those not seen in the previous version
+ */
+function filterNewComments(current: Comment[], previous: Comment[]): Comment[] {
+  const previousFingerprints = new Set(previous.map(commentFingerprint));
+  return current.filter(c => !previousFingerprints.has(commentFingerprint(c)));
 }
 
 /**
@@ -596,20 +605,20 @@ export default function () {
       // Load previous commit to filter out already-seen comments and annotations
       const existingCommits = await loadCommits();
       const previousCommit = existingCommits.length > 0 ? existingCommits[0] : null;
-      const lastVersionTime = previousCommit ? new Date(previousCommit.timestamp) : undefined;
 
-      // Fetch comments (if PAT is available), filtered to only new ones since last version
-      const commentsResult = await fetchComments(lastVersionTime);
-      const comments = commentsResult.success ? commentsResult.comments || [] : [];
+      // Fetch comments (if PAT is available), filtered to only new ones
+      const commentsResult = await fetchComments();
+      const allComments = commentsResult.success ? commentsResult.comments || [] : [];
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
-      } else if (comments.length > 0) {
-        console.log(`[Version] Successfully fetched ${comments.length} new comments for version ${version}`);
       }
+      const comments = filterNewComments(allComments, previousCommit?.comments || []);
+      console.log(`[Version] Comments: ${allComments.length} total, ${comments.length} new for version ${version}`);
 
-      // Collect annotations, filtered to only new or changed ones since last version
+      // Collect annotations, filtered to only new or changed ones
       const allAnnotations = await collectAnnotations();
       const annotations = filterNewAnnotations(allAnnotations, previousCommit?.annotations || []);
+      console.log(`[Version] Annotations: ${allAnnotations.length} total, ${annotations.length} new for version ${version}`);
 
       // Collect metrics
       const feedbackCount = comments.length + annotations.length;
