@@ -9,10 +9,14 @@ const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
-// Lazy file key getter - try to get it when needed
+// Cached file key - captured at plugin init when it's reliably available
+let cachedFileKey: string | null = null;
+
 function getFileKey(): string | null {
+  if (cachedFileKey) return cachedFileKey;
   try {
-    return figma.fileKey || null;
+    cachedFileKey = figma.fileKey || null;
+    return cachedFileKey;
   } catch (error) {
     console.error('[FileKey] Error accessing figma.fileKey:', error);
     return null;
@@ -461,6 +465,10 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
 }
 
 export default function () {
+  // Cache file key at init when it's reliably available
+  cachedFileKey = getFileKey();
+  console.log(`[Init] Cached file key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null'}`);
+
   // Handle PAT status check
   on('CHECK_PAT', async function () {
     const hasToken = await checkPatExists();
