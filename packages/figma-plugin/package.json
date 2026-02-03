@@ -30,7 +30,8 @@
     "ui": "src/ui.tsx",
     "permissions": [
       "currentuser"
-    ]
+    ],
+    "enablePrivatePluginApi": true
   },
   "dependencies": {
     "@create-figma-plugin/ui": "^4.0.3",

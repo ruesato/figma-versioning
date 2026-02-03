@@ -4,13 +4,12 @@ import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, Chan
 import { renderChangelogEntry } from './changelog';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
-const FILE_KEY_STORAGE_KEY = 'figma_versioning_file_key';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
 const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
-// Cached file key - tries stored value, then figma.fileKey
+// Cached file key - requires enablePrivatePluginApi in manifest
 let cachedFileKey: string | null = null;
 
 function getFileKey(): string | null {
@@ -22,34 +21,6 @@ function getFileKey(): string | null {
     console.error('[FileKey] Error accessing figma.fileKey:', error);
     return null;
   }
-}
-
-/**
- * Get stored file key from clientStorage
- */
-async function getStoredFileKey(): Promise<string | null> {
-  try {
-    return await figma.clientStorage.getAsync(FILE_KEY_STORAGE_KEY);
-  } catch (error) {
-    console.error('Error retrieving file key:', error);
-    return null;
-  }
-}
-
-/**
- * Store file key in clientStorage
- */
-async function storeFileKey(fileKey: string): Promise<void> {
-  await figma.clientStorage.setAsync(FILE_KEY_STORAGE_KEY, fileKey);
-  cachedFileKey = fileKey;
-}
-
-/**
- * Remove file key from clientStorage
- */
-async function removeFileKey(): Promise<void> {
-  await figma.clientStorage.deleteAsync(FILE_KEY_STORAGE_KEY);
-  cachedFileKey = null;
 }
 
 /**
@@ -493,19 +464,15 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
   }
 }
 
-export default async function () {
-  // Try figma.fileKey first, then fall back to stored file key
+export default function () {
+  // Cache file key at init — requires enablePrivatePluginApi in manifest
   cachedFileKey = getFileKey();
-  if (!cachedFileKey) {
-    cachedFileKey = await getStoredFileKey();
-  }
-  console.log(`[Init] File key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null (configure in Settings)'}`);
+  console.log(`[Init] File key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null'}`);
 
   // Handle PAT status check
   on('CHECK_PAT', async function () {
     const hasToken = await checkPatExists();
-    const storedFileKey = await getStoredFileKey();
-    emit('PAT_STATUS', { hasToken, hasFileKey: !!storedFileKey });
+    emit('PAT_STATUS', { hasToken });
   });
 
   // Handle PAT validation and storage
@@ -527,24 +494,6 @@ export default async function () {
   on('REMOVE_PAT', async function () {
     await removePat();
     emit('PAT_REMOVED');
-  });
-
-  // Handle file key storage
-  on('SET_FILE_KEY', async function (data: { fileKey: string }) {
-    await storeFileKey(data.fileKey);
-    emit('FILE_KEY_SAVED');
-  });
-
-  // Handle file key removal
-  on('REMOVE_FILE_KEY', async function () {
-    await removeFileKey();
-    emit('FILE_KEY_REMOVED');
-  });
-
-  // Handle file key retrieval
-  on('GET_FILE_KEY', async function () {
-    const storedFileKey = await getStoredFileKey();
-    emit('FILE_KEY_STATUS', { fileKey: storedFileKey });
   });
 
   // Handle versioning mode retrieval
