@@ -116,7 +116,7 @@ async function updateCurrentVersion(version: string): Promise<void> {
 /**
  * Fetch comments from Figma REST API
  */
-async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
+async function fetchComments(since?: Date): Promise<{ success: boolean; comments?: Comment[]; error?: string }> {
   try {
     // Get the PAT from storage
     const pat = await getPat();
@@ -166,8 +166,13 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
       nodeId: comment.client_meta?.node_id
     }));
 
-    console.log(`[Comments] Successfully transformed ${comments.length} comments`);
-    return { success: true, comments };
+    // Filter to only comments created after the previous version timestamp
+    const filtered = since
+      ? comments.filter(c => c.timestamp > since)
+      : comments;
+
+    console.log(`[Comments] Successfully transformed ${comments.length} comments (${filtered.length} after filtering)`);
+    return { success: true, comments: filtered };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Failed to fetch comments';
     console.error(`[Comments] Error: ${errorMsg}`, error);
@@ -232,6 +237,24 @@ async function collectAnnotations(): Promise<Annotation[]> {
   }
 
   return annotations;
+}
+
+/**
+ * Generate a fingerprint for an annotation to detect duplicates across versions
+ */
+function annotationFingerprint(a: Annotation): string {
+  const propsStr = a.properties
+    ? JSON.stringify(a.properties, Object.keys(a.properties).sort())
+    : '';
+  return `${a.label}|${a.nodeId}|${propsStr}`;
+}
+
+/**
+ * Filter annotations to only those that are new or changed compared to the previous version
+ */
+function filterNewAnnotations(current: Annotation[], previous: Annotation[]): Annotation[] {
+  const previousFingerprints = new Set(previous.map(annotationFingerprint));
+  return current.filter(a => !previousFingerprints.has(annotationFingerprint(a)));
 }
 
 /**
@@ -569,17 +592,23 @@ export default function () {
         version = await calculateNextSemanticVersion(incrementType || 'patch');
       }
 
-      // Fetch comments (if PAT is available)
-      const commentsResult = await fetchComments();
+      // Load previous commit to filter out already-seen comments and annotations
+      const existingCommits = await loadCommits();
+      const previousCommit = existingCommits.length > 0 ? existingCommits[0] : null;
+      const lastVersionTime = previousCommit ? new Date(previousCommit.timestamp) : undefined;
+
+      // Fetch comments (if PAT is available), filtered to only new ones since last version
+      const commentsResult = await fetchComments(lastVersionTime);
       const comments = commentsResult.success ? commentsResult.comments || [] : [];
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
       } else if (comments.length > 0) {
-        console.log(`[Version] Successfully fetched ${comments.length} comments for version ${version}`);
+        console.log(`[Version] Successfully fetched ${comments.length} new comments for version ${version}`);
       }
 
-      // Collect annotations
-      const annotations = await collectAnnotations();
+      // Collect annotations, filtered to only new or changed ones since last version
+      const allAnnotations = await collectAnnotations();
+      const annotations = filterNewAnnotations(allAnnotations, previousCommit?.annotations || []);
 
       // Collect metrics
       const feedbackCount = comments.length + annotations.length;
