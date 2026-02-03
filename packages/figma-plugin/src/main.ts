@@ -239,18 +239,13 @@ async function collectAnnotations(): Promise<Annotation[]> {
 }
 
 /**
- * Generate a fingerprint for a comment to detect duplicates across versions
+ * Filter comments to only those created after the previous commit timestamp
  */
-function commentFingerprint(c: Comment): string {
-  return `${c.author.name}|${c.text}|${c.nodeId || ''}`;
-}
-
-/**
- * Filter comments to only those not seen in the previous version
- */
-function filterNewComments(current: Comment[], previous: Comment[]): Comment[] {
-  const previousFingerprints = new Set(previous.map(commentFingerprint));
-  return current.filter(c => !previousFingerprints.has(commentFingerprint(c)));
+function filterNewComments(current: Comment[], previousCommitTimestamp?: Date): Comment[] {
+  if (!previousCommitTimestamp) {
+    return current;
+  }
+  return current.filter(c => c.timestamp > previousCommitTimestamp);
 }
 
 /**
@@ -264,10 +259,14 @@ function annotationFingerprint(a: Annotation): string {
 }
 
 /**
- * Filter annotations to only those that are new or changed compared to the previous version
+ * Filter annotations to only those not seen in any previous commits
+ * This handles the case where a previous commit had 0 annotations - we still filter against all historical annotations
  */
-function filterNewAnnotations(current: Annotation[], previous: Annotation[]): Annotation[] {
-  const previousFingerprints = new Set(previous.map(annotationFingerprint));
+function filterNewAnnotations(current: Annotation[], allPrevious: Annotation[]): Annotation[] {
+  if (allPrevious.length === 0) {
+    return current;
+  }
+  const previousFingerprints = new Set(allPrevious.map(annotationFingerprint));
   return current.filter(a => !previousFingerprints.has(annotationFingerprint(a)));
 }
 
@@ -620,12 +619,13 @@ export default function () {
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
       }
-      const comments = filterNewComments(allComments, previousCommit?.comments || []);
+      const comments = filterNewComments(allComments, previousCommit?.timestamp);
       console.log(`[Version] Comments: ${allComments.length} total, ${comments.length} new for version ${version}`);
 
       // Collect annotations, filtered to only new or changed ones
       const allAnnotations = await collectAnnotations();
-      const annotations = filterNewAnnotations(allAnnotations, previousCommit?.annotations || []);
+      const allPreviousAnnotations = existingCommits.flatMap(commit => commit.annotations || []);
+      const annotations = filterNewAnnotations(allAnnotations, allPreviousAnnotations);
       console.log(`[Version] Annotations: ${allAnnotations.length} total, ${annotations.length} new for version ${version}`);
 
       // Collect metrics
