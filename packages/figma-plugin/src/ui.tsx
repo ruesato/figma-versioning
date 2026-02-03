@@ -113,10 +113,27 @@ function OnboardingView({ onComplete, onSkip }: { onComplete: () => void; onSkip
 
 function SettingsView({ onBack }: { onBack: () => void }) {
   const [newPat, setNewPat] = useState('');
+  const [fileKeyInput, setFileKeyInput] = useState('');
+  const [currentFileKey, setCurrentFileKey] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+
+  // Load current file key on mount
+  useEffect(() => {
+    emit('GET_FILE_KEY');
+  }, []);
+
+  /**
+   * Extract file key from a Figma URL or return the raw string if it's already a key.
+   * Supports: https://www.figma.com/design/{fileKey}/... and https://www.figma.com/file/{fileKey}/...
+   */
+  function extractFileKey(input: string): string {
+    const trimmed = input.trim();
+    const match = trimmed.match(/figma\.com\/(?:design|file)\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : trimmed;
+  }
 
   function handleUpdatePat() {
     if (!newPat.trim()) {
@@ -132,6 +149,20 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   function handleRemovePat() {
     setIsRemoving(true);
     emit('REMOVE_PAT');
+  }
+
+  function handleSaveFileKey() {
+    const fileKey = extractFileKey(fileKeyInput);
+    if (!fileKey) {
+      setMessage('Please enter a file key or Figma URL');
+      setMessageType('error');
+      return;
+    }
+    emit('SET_FILE_KEY', { fileKey });
+  }
+
+  function handleRemoveFileKey() {
+    emit('REMOVE_FILE_KEY');
   }
 
   useEffect(() => {
@@ -153,9 +184,29 @@ function SettingsView({ onBack }: { onBack: () => void }) {
       setMessageType('success');
     });
 
+    const unsubFileKeyStatus = on('FILE_KEY_STATUS', function (data: { fileKey: string | null }) {
+      setCurrentFileKey(data.fileKey);
+    });
+
+    const unsubFileKeySaved = on('FILE_KEY_SAVED', function () {
+      setMessage('File key saved successfully');
+      setMessageType('success');
+      setFileKeyInput('');
+      emit('GET_FILE_KEY');
+    });
+
+    const unsubFileKeyRemoved = on('FILE_KEY_REMOVED', function () {
+      setCurrentFileKey(null);
+      setMessage('File key removed');
+      setMessageType('success');
+    });
+
     return () => {
       unsubValidation();
       unsubRemoval();
+      unsubFileKeyStatus();
+      unsubFileKeySaved();
+      unsubFileKeyRemoved();
     };
   }, []);
 
@@ -207,6 +258,51 @@ function SettingsView({ onBack }: { onBack: () => void }) {
       <Button onClick={handleRemovePat} fullWidth secondary danger disabled={isUpdating || isRemoving}>
         {isRemoving ? 'Removing...' : 'Remove Token'}
       </Button>
+
+      <VerticalSpace space="large" />
+      <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+        <Text>
+          <Bold>File Key</Bold>
+        </Text>
+        <VerticalSpace space="small" />
+        <Muted>
+          Required for fetching comments. Paste your Figma file URL or just the file key.
+        </Muted>
+        <VerticalSpace space="extraSmall" />
+        <Muted>
+          Find it in your browser URL: figma.com/design/<Bold>{'<file-key>'}</Bold>/...
+        </Muted>
+
+        {currentFileKey && (
+          <>
+            <VerticalSpace space="small" />
+            <div style={{
+              padding: '8px',
+              backgroundColor: 'var(--color-bg-secondary)',
+              borderRadius: '4px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Muted>Current: {currentFileKey.substring(0, 12)}...</Muted>
+              <Button onClick={handleRemoveFileKey} secondary danger>
+                Remove
+              </Button>
+            </div>
+          </>
+        )}
+
+        <VerticalSpace space="small" />
+        <Textbox
+          value={fileKeyInput}
+          onValueInput={setFileKeyInput}
+          placeholder="Paste Figma URL or file key"
+        />
+        <VerticalSpace space="small" />
+        <Button onClick={handleSaveFileKey} fullWidth>
+          {currentFileKey ? 'Update File Key' : 'Save File Key'}
+        </Button>
+      </div>
 
       {message && (
         <>
