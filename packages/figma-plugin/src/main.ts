@@ -167,8 +167,9 @@ async function fetchComments(since?: Date): Promise<{ success: boolean; comments
     }));
 
     // Filter to only comments created after the previous version timestamp
+    const sinceMs = since ? since.getTime() : 0;
     const filtered = since
-      ? comments.filter(c => c.timestamp > since)
+      ? comments.filter(c => new Date(c.timestamp).getTime() > sinceMs)
       : comments;
 
     console.log(`[Comments] Successfully transformed ${comments.length} comments (${filtered.length} after filtering)`);
