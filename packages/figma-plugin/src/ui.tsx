@@ -1,4 +1,4 @@
-import { h, Fragment } from 'preact';
+import { h, Fragment } from 'preact'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { render, Container, VerticalSpace, Text, Textbox, Button, Muted, Link, Bold } from '@create-figma-plugin/ui';
 import { emit, on } from '@create-figma-plugin/utilities';
 import { useState, useEffect } from 'preact/hooks';
@@ -37,12 +37,12 @@ function OnboardingView({ onComplete, onSkip }: { onComplete: () => void; onSkip
   }, [onComplete]);
 
   return (
-    <Container space="medium">
+    <Container space="small">
       <VerticalSpace space="large" />
       <Text>
         <div class="text-2xl font-bold">Welcome to Figma Versioning</div>
       </Text>
-      <VerticalSpace space="large" />
+      <VerticalSpace space="medium" />
 
       <Text>
         <Bold>Setup Required</Bold>
@@ -98,7 +98,7 @@ function OnboardingView({ onComplete, onSkip }: { onComplete: () => void; onSkip
         Skip for now
       </Button>
 
-      <VerticalSpace space="medium" />
+      <VerticalSpace space="small" />
       <Muted>
         Your token is stored securely and only used to fetch comments and activity data from your files.
       </Muted>
@@ -160,7 +160,7 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   }, []);
 
   return (
-    <Container space="medium">
+    <Container space="small">
       <VerticalSpace space="large" />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text>
@@ -170,7 +170,7 @@ function SettingsView({ onBack }: { onBack: () => void }) {
           Back
         </Button>
       </div>
-      <VerticalSpace space="large" />
+      <VerticalSpace space="medium" />
 
       <Text>
         <Bold>Personal Access Token</Bold>
@@ -195,7 +195,7 @@ function SettingsView({ onBack }: { onBack: () => void }) {
         {isUpdating ? 'Updating...' : 'Update Token'}
       </Button>
 
-      <VerticalSpace space="large" />
+      <VerticalSpace space="medium" />
       <Text>
         <Bold>Remove Token</Bold>
       </Text>
@@ -326,7 +326,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
   }
 
   return (
-    <Container space="medium">
+    <Container space="small">
       <VerticalSpace space="large" />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text>
@@ -336,7 +336,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
           Settings
         </Button>
       </div>
-      <VerticalSpace space="large" />
+      <VerticalSpace space="medium" />
 
       {!hasToken && (
         <>
@@ -360,8 +360,10 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       )}
 
       {/* Activity Histogram */}
+      <VerticalSpace space="medium" />
       <HistogramPanel />
-      <VerticalSpace space="large" />
+
+      <VerticalSpace space="medium" />
 
       <Text>
         <Bold>Create Commit</Bold>

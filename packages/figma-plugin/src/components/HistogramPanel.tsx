@@ -12,7 +12,7 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { emit, on } from '@create-figma-plugin/utilities';
-import { Text, Muted, Bold, VerticalSpace } from '@create-figma-plugin/ui';
+import { Text, Bold, VerticalSpace } from '@create-figma-plugin/ui';
 import type { Commit } from '@figma-versioning/core';
 
 interface HistogramBar {
@@ -101,16 +101,21 @@ export function HistogramPanel() {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  console.log('[HistogramPanel] Component rendering, bars:', bars.length, 'loading:', loading);
+
   const MAX_HEIGHT = 80; // pixels
   const BAR_WIDTH = 8; // pixels
   const BAR_GAP = 4; // pixels
 
   // Load commits on mount
   useEffect(() => {
+    console.log('[HistogramPanel] useEffect running, emitting GET_RECENT_COMMITS');
+
     // Request commits from main thread
     emit('GET_RECENT_COMMITS', { maxCommits: 50 });
 
     const unsubscribe = on('RECENT_COMMITS', function (data: { commits: Commit[] }) {
+      console.log('[HistogramPanel] Received RECENT_COMMITS:', data.commits.length, 'commits');
       const histogramBars = calculateHistogramBars(data.commits);
       setBars(histogramBars);
       setLoading(false);
@@ -142,24 +147,44 @@ export function HistogramPanel() {
 
   if (loading) {
     return (
-      <div class="bg-gray-50 dark:bg-gray-800 rounded p-4">
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-secondary)',
+          padding: '16px',
+          borderRadius: '4px',
+          display: 'block',
+          visibility: 'visible'
+        }}
+      >
         <Text>
           <Bold>Recent Activity</Bold>
         </Text>
         <VerticalSpace space="small" />
-        <Muted>Loading history...</Muted>
+        <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>
+          Loading history...
+        </Text>
       </div>
     );
   }
 
   if (bars.length === 0) {
     return (
-      <div class="bg-gray-50 dark:bg-gray-800 rounded p-4">
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-secondary)',
+          padding: '16px',
+          borderRadius: '4px',
+          display: 'block',
+          visibility: 'visible'
+        }}
+      >
         <Text>
           <Bold>Recent Activity</Bold>
         </Text>
         <VerticalSpace space="small" />
-        <Muted>No commits yet. Create your first version to see activity history.</Muted>
+        <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>
+          No commits yet. Create your first version to see activity history.
+        </Text>
       </div>
     );
   }
@@ -167,21 +192,24 @@ export function HistogramPanel() {
   const scale = calculateScale(bars, MAX_HEIGHT);
 
   return (
-    <div class="bg-gray-50 dark:bg-gray-800 rounded p-4">
+    <div
+      class="bg-gray-50 dark:bg-gray-800 rounded p-4"
+      style={{ display: 'block', visibility: 'visible' }}
+    >
       <Text>
         <Bold>Recent Activity</Bold>
       </Text>
       <VerticalSpace space="small" />
 
       {/* Legend */}
-      <div class="flex gap-4 mb-3">
+      <div class="flex gap-4 mb-3" style={{ display: 'flex' }}>
         <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-blue-500" style={{ borderRadius: '2px' }} />
-          <Muted>Feedback</Muted>
+          <div class="w-3 h-3 bg-blue-500" style={{ borderRadius: '2px', display: 'block' }} />
+          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>Feedback</Text>
         </div>
         <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-orange-500" style={{ borderRadius: '2px' }} />
-          <Muted>Nodes Changed</Muted>
+          <div class="w-3 h-3 bg-orange-500" style={{ borderRadius: '2px', display: 'block' }} />
+          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>Nodes Changed</Text>
         </div>
       </div>
 
@@ -191,6 +219,7 @@ export function HistogramPanel() {
         style={{
           maxWidth: '100%',
           scrollbarWidth: 'thin',
+          display: 'block'
         }}
       >
         <div
@@ -198,6 +227,7 @@ export function HistogramPanel() {
           style={{
             height: `${MAX_HEIGHT + 20}px`,
             minWidth: `${bars.length * (BAR_WIDTH + BAR_GAP)}px`,
+            display: 'flex'
           }}
         >
           {bars.map((bar) => {
@@ -252,6 +282,8 @@ export function HistogramPanel() {
             top: `${tooltip.y}px`,
             transform: 'translate(-50%, -100%)',
             maxWidth: '200px',
+            display: 'block',
+            visibility: 'visible'
           }}
         >
           <div class="font-bold mb-1">{tooltip.version}</div>
@@ -264,12 +296,12 @@ export function HistogramPanel() {
       )}
 
       <VerticalSpace space="extraSmall" />
-      <Muted>
+      <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>
         <div class="text-xs">
           Showing {bars.length} most recent {bars.length === 1 ? 'commit' : 'commits'}. Click a bar to view in
           changelog.
         </div>
-      </Muted>
+      </Text>
     </div>
   );
 }
