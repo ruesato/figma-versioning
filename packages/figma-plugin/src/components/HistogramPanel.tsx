@@ -193,8 +193,12 @@ export function HistogramPanel() {
 
   return (
     <div
-      class="bg-gray-50 dark:bg-gray-800 rounded p-4"
-      style={{ display: 'block', visibility: 'visible' }}
+      style={{
+        backgroundColor: 'var(--color-bg-secondary)',
+        padding: '16px',
+        borderRadius: '4px',
+        position: 'relative'
+      }}
     >
       <Text>
         <Bold>Recent Activity</Bold>
@@ -202,32 +206,48 @@ export function HistogramPanel() {
       <VerticalSpace space="small" />
 
       {/* Legend */}
-      <div class="flex gap-4 mb-3" style={{ display: 'flex' }}>
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-blue-500" style={{ borderRadius: '2px', display: 'block' }} />
-          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>Feedback</Text>
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '2px',
+              backgroundColor: 'rgb(59 130 246)'
+            }}
+          />
+          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Feedback</Text>
         </div>
-        <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-orange-500" style={{ borderRadius: '2px', display: 'block' }} />
-          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>Nodes Changed</Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '2px',
+              backgroundColor: 'rgb(249 115 22)'
+            }}
+          />
+          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Nodes Changed</Text>
         </div>
       </div>
 
       {/* Histogram bars with horizontal scroll */}
       <div
-        class="overflow-x-auto pb-2"
         style={{
           maxWidth: '100%',
           scrollbarWidth: 'thin',
-          display: 'block'
+          overflowX: 'auto',
+          paddingBottom: '8px',
+          position: 'relative'
         }}
       >
         <div
-          class="flex items-end gap-1"
           style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: `${BAR_GAP}px`,
             height: `${MAX_HEIGHT + 20}px`,
-            minWidth: `${bars.length * (BAR_WIDTH + BAR_GAP)}px`,
-            display: 'flex'
+            minWidth: `${bars.length * (BAR_WIDTH + BAR_GAP)}px`
           }}
         >
           {bars.map((bar) => {
@@ -237,10 +257,14 @@ export function HistogramPanel() {
             return (
               <div
                 key={bar.commitId}
-                class="flex flex-col justify-end cursor-pointer transition-opacity hover:opacity-80"
                 style={{
                   width: `${BAR_WIDTH}px`,
                   height: `${MAX_HEIGHT}px`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  cursor: 'pointer',
+                  position: 'relative'
                 }}
                 onClick={() => handleBarClick(bar)}
                 onMouseEnter={(e) => handleBarHover(bar, e as any)}
@@ -249,10 +273,11 @@ export function HistogramPanel() {
                 {/* Nodes delta layer (orange) - appears on top */}
                 {nodesDeltaHeight > 0 && (
                   <div
-                    class="bg-orange-500"
                     style={{
-                      height: `${nodesDeltaHeight}px`,
+                      height: `${Math.max(nodesDeltaHeight, 2)}px`,
                       width: '100%',
+                      backgroundColor: 'rgb(249 115 22)',
+                      borderRadius: '1px'
                     }}
                   />
                 )}
@@ -260,10 +285,11 @@ export function HistogramPanel() {
                 {/* Feedback layer (blue) - appears below */}
                 {feedbackHeight > 0 && (
                   <div
-                    class="bg-blue-500"
                     style={{
-                      height: `${feedbackHeight}px`,
+                      height: `${Math.max(feedbackHeight, 2)}px`,
                       width: '100%',
+                      backgroundColor: 'rgb(59 130 246)',
+                      borderRadius: '1px'
                     }}
                   />
                 )}
@@ -276,19 +302,27 @@ export function HistogramPanel() {
       {/* Tooltip */}
       {tooltip && (
         <div
-          class="fixed z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 shadow-lg pointer-events-none"
           style={{
+            position: 'absolute',
             left: `${tooltip.x}px`,
             top: `${tooltip.y}px`,
             transform: 'translate(-50%, -100%)',
+            backgroundColor: 'rgb(17 24 39)',
+            color: 'white',
+            fontSize: '11px',
+            padding: '8px 12px',
+            borderRadius: '4px',
             maxWidth: '200px',
-            display: 'block',
-            visibility: 'visible'
+            pointerEvents: 'none',
+            zIndex: 100,
+            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+            whiteSpace: 'normal',
+            wordWrap: 'break-word'
           }}
         >
-          <div class="font-bold mb-1">{tooltip.version}</div>
-          <div class="mb-1 text-gray-300">{tooltip.title}</div>
-          <div class="text-gray-400">
+          <div style={{ fontWeight: 700, marginBottom: '4px' }}>{tooltip.version}</div>
+          <div style={{ marginBottom: '4px', color: 'rgb(209 213 219)' }}>{tooltip.title}</div>
+          <div style={{ color: 'rgb(156 163 175)' }}>
             <div>Feedback: {tooltip.feedbackCount}</div>
             {tooltip.nodesDelta > 0 && <div>Nodes Changed: {tooltip.nodesDelta}</div>}
           </div>
@@ -296,11 +330,9 @@ export function HistogramPanel() {
       )}
 
       <VerticalSpace space="extraSmall" />
-      <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>
-        <div class="text-xs">
-          Showing {bars.length} most recent {bars.length === 1 ? 'commit' : 'commits'}. Click a bar to view in
-          changelog.
-        </div>
+      <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+        Showing {bars.length} most recent {bars.length === 1 ? 'commit' : 'commits'}. Click a bar to view in
+        changelog.
       </Text>
     </div>
   );
