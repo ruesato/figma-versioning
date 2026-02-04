@@ -7,6 +7,9 @@
 # Logs and temporary files
 *.log
 
+# Reference files used during development
+reference/
+
 # Dependency directories
 node_modules/
 lib/
