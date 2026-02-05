@@ -225,11 +225,8 @@ function SettingsView({ onBack }: { onBack: () => void }) {
 // Gear icon SVG for settings button
 function GearIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M6.5 1L6.2 2.4C5.8 2.5 5.4 2.7 5.1 2.9L3.8 2.3L2.3 4.9L3.4 5.7C3.3 6.1 3.3 6.5 3.3 6.9C3.3 7.3 3.3 7.7 3.4 8.1L2.3 8.9L3.8 11.5L5.1 10.9C5.4 11.1 5.8 11.3 6.2 11.4L6.5 12.8H9.5L9.8 11.4C10.2 11.3 10.6 11.1 10.9 10.9L12.2 11.5L13.7 8.9L12.6 8.1C12.7 7.7 12.7 7.3 12.7 6.9C12.7 6.5 12.7 6.1 12.6 5.7L13.7 4.9L12.2 2.3L10.9 2.9C10.6 2.7 10.2 2.5 9.8 2.4L9.5 1H6.5ZM8 5C9.1 5 10 5.9 10 7C10 8.1 9.1 9 8 9C6.9 9 6 8.1 6 7C6 5.9 6.9 5 8 5Z"
-        fill="currentColor"
-      />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6.837 1.333h2.326l.29 1.743a5.17 5.17 0 011.334.771l1.666-.566.927 1.604-1.232 1.26a5.2 5.2 0 010 1.71l1.232 1.26-.927 1.604-1.666-.566a5.17 5.17 0 01-1.334.771l-.29 1.743H6.837l-.29-1.743a5.17 5.17 0 01-1.334-.771l-1.666.566-.927-1.604 1.232-1.26a5.2 5.2 0 010-1.71l-1.232-1.26.927-1.604 1.666.566a5.17 5.17 0 011.334-.771l.29-1.743zM8 5.667a2.333 2.333 0 100 4.666 2.333 2.333 0 000-4.666z" fillRule="evenodd" clipRule="evenodd"/>
     </svg>
   );
 }
@@ -356,6 +353,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       padding: '24px',
       borderRadius: '16px',
       width: '100%',
+      minWidth: '640px',
       boxSizing: 'border-box' as const,
       fontFamily: 'Inter, sans-serif'
     },
