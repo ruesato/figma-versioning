@@ -13,7 +13,8 @@
     "build": "pnpm --filter './packages/*' build",
     "test": "pnpm --filter './packages/*' test",
     "lint": "pnpm --filter './packages/*' lint",
-    "typecheck": "pnpm --filter './packages/*' typecheck"
+    "typecheck": "pnpm --filter './packages/*' typecheck",
+    "clean": "pnpm --filter './packages/*' clean"
   },
   "keywords": [
     "figma",

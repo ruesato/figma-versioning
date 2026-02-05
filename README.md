@@ -32,10 +32,10 @@ A Figma plugin for creating semantic versions with automatic changelog generatio
    ```
 
 3. **Load plugin in Figma:**
-   - Open Figma desktop app
-   - Go to **Plugins** → **Development** → **Import plugin from manifest...**
-   - Navigate to `packages/figma-plugin/manifest.json`
-   - Select the manifest file
+    - Open Figma desktop app
+    - Go to **Plugins** → **Development** → **Import plugin from manifest...**
+    - Navigate to `packages/figma-plugin/dist/manifest.json`
+    - Select the manifest file
 
 ### Development Mode
 
