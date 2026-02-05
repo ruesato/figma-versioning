@@ -356,9 +356,10 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       padding: '24px',
       borderRadius: '16px',
       width: '100%',
-      minWidth: '640px',
+      maxWidth: '100%',
       boxSizing: 'border-box' as const,
-      fontFamily: 'Inter, sans-serif'
+      fontFamily: 'Inter, sans-serif',
+      overflow: 'hidden' as const
     },
     sectionHeader: {
       fontFamily: 'Inter, sans-serif',

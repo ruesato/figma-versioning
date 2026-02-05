@@ -145,7 +145,7 @@ export function HistogramPanel() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
         <p style={{
           fontFamily: 'Inter, sans-serif',
           fontWeight: 400,
@@ -156,7 +156,7 @@ export function HistogramPanel() {
         }}>
           Recent activity
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: 0 }}>
           <div style={{ height: `${MAX_HEIGHT}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#808080', margin: 0 }}>
               Loading history...
@@ -169,7 +169,7 @@ export function HistogramPanel() {
 
   if (bars.length === 0) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
         <p style={{
           fontFamily: 'Inter, sans-serif',
           fontWeight: 400,
@@ -180,7 +180,7 @@ export function HistogramPanel() {
         }}>
           Recent activity
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: 0 }}>
           <div style={{ height: `${MAX_HEIGHT}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#808080', margin: 0 }}>
               No commits yet. Create your first version to see activity history.
@@ -194,7 +194,7 @@ export function HistogramPanel() {
   const scale = calculateScale(bars, MAX_HEIGHT);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', position: 'relative', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
       <p style={{
         fontFamily: 'Inter, sans-serif',
         fontWeight: 400,
@@ -206,7 +206,7 @@ export function HistogramPanel() {
         Recent activity
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: 0 }}>
         {/* Histogram bars */}
         <div
           style={{
@@ -214,7 +214,8 @@ export function HistogramPanel() {
             gap: `${BAR_GAP}px`,
             height: `${MAX_HEIGHT}px`,
             alignItems: 'flex-end',
-            width: '100%'
+            width: '100%',
+            minWidth: 0
           }}
         >
           {bars.map((bar) => {
