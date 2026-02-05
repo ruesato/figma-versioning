@@ -703,7 +703,7 @@ export default function () {
   });
 
   showUI({
-    width: 400,
-    height: 600
+    width: 640,
+    height: 800
   });
 }

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm run build:css && npm run build:js",
     "build:css": "tailwindcss --input ./src/input.css --output ./src/output.css",
-    "build:js": "rm -rf dist && build-figma-plugin --typecheck --minify --output dist && if [ -d dist/build ]; then mv dist/build/* dist/ && rmdir dist/build; fi && sed 's/build\\/main.js/main.js/g; s/build\\/ui.js/ui.js/g' manifest.json > dist/manifest.json",
+    "build:js": "rm -rf dist && build-figma-plugin --typecheck --minify --output dist && if [ -d dist/build ]; then mv dist/build/* dist/ && rmdir dist/build; fi && sed -i '' 's/build\\/main.js/main.js/g; s/build\\/ui.js/ui.js/g' dist/manifest.json",
     "dev": "npm run build:css && concurrently npm:watch:css npm:watch:js",
     "watch:css": "tailwindcss --input ./src/input.css --output ./src/output.css --watch",
     "watch:js": "build-figma-plugin --typecheck --watch",
@@ -28,11 +28,7 @@
     "id": "figma-versioning",
     "name": "Figma Versioning",
     "main": "src/main.ts",
-    "ui": {
-      "src": "src/ui.tsx",
-      "width": 640,
-      "height": 800
-    },
+    "ui": "src/ui.tsx",
     "permissions": [
       "currentuser"
     ],
