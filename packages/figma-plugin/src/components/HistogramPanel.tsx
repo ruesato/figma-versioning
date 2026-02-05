@@ -9,10 +9,9 @@
  * - Click to navigate to changelog (sends message to main thread)
  */
 
-import { h } from 'preact';
+import { h } from 'preact'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { useState, useEffect } from 'preact/hooks';
 import { emit, on } from '@create-figma-plugin/utilities';
-import { Text, Bold, VerticalSpace } from '@create-figma-plugin/ui';
 import type { Commit } from '@figma-versioning/core';
 
 interface HistogramBar {
@@ -103,8 +102,7 @@ export function HistogramPanel() {
 
   console.log('[HistogramPanel] Component rendering, bars:', bars.length, 'loading:', loading);
 
-  const MAX_HEIGHT = 80; // pixels
-  const BAR_WIDTH = 8; // pixels
+  const MAX_HEIGHT = 160; // pixels - matches Figma design
   const BAR_GAP = 4; // pixels
 
   // Load commits on mount
@@ -147,44 +145,48 @@ export function HistogramPanel() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          backgroundColor: 'var(--color-bg-secondary)',
-          padding: '16px',
-          borderRadius: '4px',
-          display: 'block',
-          visibility: 'visible'
-        }}
-      >
-        <Text>
-          <Bold>Recent Activity</Bold>
-        </Text>
-        <VerticalSpace space="small" />
-        <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>
-          Loading history...
-        </Text>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px' }}>
+        <p style={{
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 400,
+          fontSize: '12px',
+          color: '#bbb',
+          textTransform: 'uppercase',
+          margin: 0
+        }}>
+          Recent activity
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ height: `${MAX_HEIGHT}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#808080', margin: 0 }}>
+              Loading history...
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (bars.length === 0) {
     return (
-      <div
-        style={{
-          backgroundColor: 'var(--color-bg-secondary)',
-          padding: '16px',
-          borderRadius: '4px',
-          display: 'block',
-          visibility: 'visible'
-        }}
-      >
-        <Text>
-          <Bold>Recent Activity</Bold>
-        </Text>
-        <VerticalSpace space="small" />
-        <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block' }}>
-          No commits yet. Create your first version to see activity history.
-        </Text>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px' }}>
+        <p style={{
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 400,
+          fontSize: '12px',
+          color: '#bbb',
+          textTransform: 'uppercase',
+          margin: 0
+        }}>
+          Recent activity
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ height: `${MAX_HEIGHT}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#808080', margin: 0 }}>
+              No commits yet. Create your first version to see activity history.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -192,148 +194,97 @@ export function HistogramPanel() {
   const scale = calculateScale(bars, MAX_HEIGHT);
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--color-bg-secondary)',
-        padding: '16px',
-        borderRadius: '4px',
-        position: 'relative'
-      }}
-    >
-      <Text>
-        <Bold>Recent Activity</Bold>
-      </Text>
-      <VerticalSpace space="small" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', position: 'relative' }}>
+      <p style={{
+        fontFamily: 'Inter, sans-serif',
+        fontWeight: 400,
+        fontSize: '12px',
+        color: '#bbb',
+        textTransform: 'uppercase',
+        margin: 0
+      }}>
+        Recent activity
+      </p>
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '2px',
-              backgroundColor: 'rgb(59 130 246)'
-            }}
-          />
-          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Feedback</Text>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '2px',
-              backgroundColor: 'rgb(249 115 22)'
-            }}
-          />
-          <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>Nodes Changed</Text>
-        </div>
-      </div>
-
-      {/* Histogram bars with horizontal scroll */}
-      <div
-        style={{
-          maxWidth: '100%',
-          scrollbarWidth: 'thin',
-          overflowX: 'auto',
-          paddingBottom: '8px',
-          position: 'relative'
-        }}
-      >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Histogram bars */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'flex-end',
             gap: `${BAR_GAP}px`,
-            height: `${MAX_HEIGHT + 20}px`,
-            minWidth: `${bars.length * (BAR_WIDTH + BAR_GAP)}px`
+            height: `${MAX_HEIGHT}px`,
+            alignItems: 'flex-end',
+            width: '100%'
           }}
         >
           {bars.map((bar) => {
             const feedbackHeight = Math.round(bar.feedbackCount * scale);
             const nodesDeltaHeight = Math.round(bar.nodesDelta * scale);
+            // Determine primary color based on which value is larger
+            const isFeedbackDominant = bar.feedbackCount > bar.nodesDelta;
+            const barColor = isFeedbackDominant ? '#0885fe' : '#ff6800';
+            const totalHeight = Math.max(feedbackHeight + nodesDeltaHeight, 1);
 
             return (
               <div
                 key={bar.commitId}
                 style={{
-                  width: `${BAR_WIDTH}px`,
-                  height: `${MAX_HEIGHT}px`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  cursor: 'pointer',
-                  position: 'relative'
+                  flex: '1 0 0',
+                  height: `${totalHeight}px`,
+                  minHeight: '1px',
+                  minWidth: '1px',
+                  backgroundColor: barColor,
+                  cursor: 'pointer'
                 }}
                 onClick={() => handleBarClick(bar)}
                 onMouseEnter={(e) => handleBarHover(bar, e as any)}
                 onMouseLeave={handleBarLeave}
-              >
-                {/* Nodes delta layer (orange) - appears on top */}
-                {nodesDeltaHeight > 0 && (
-                  <div
-                    style={{
-                      height: `${Math.max(nodesDeltaHeight, 2)}px`,
-                      width: '100%',
-                      backgroundColor: 'rgb(249 115 22)',
-                      borderRadius: '1px'
-                    }}
-                  />
-                )}
-
-                {/* Feedback layer (blue) - appears below */}
-                {feedbackHeight > 0 && (
-                  <div
-                    style={{
-                      height: `${Math.max(feedbackHeight, 2)}px`,
-                      width: '100%',
-                      backgroundColor: 'rgb(59 130 246)',
-                      borderRadius: '1px'
-                    }}
-                  />
-                )}
-              </div>
+              />
             );
           })}
         </div>
+
+        {/* Caption */}
+        <p style={{
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 400,
+          fontSize: '12px',
+          color: '#808080',
+          margin: 0
+        }}>
+          Last {bars.length} commits. Select a bar to view its changelog entry.
+        </p>
       </div>
 
       {/* Tooltip */}
       {tooltip && (
         <div
           style={{
-            position: 'absolute',
+            position: 'fixed',
             left: `${tooltip.x}px`,
-            top: `${tooltip.y}px`,
+            top: `${tooltip.y - 10}px`,
             transform: 'translate(-50%, -100%)',
-            backgroundColor: 'rgb(17 24 39)',
+            backgroundColor: '#1a1a1a',
             color: 'white',
-            fontSize: '11px',
+            fontSize: '12px',
             padding: '8px 12px',
-            borderRadius: '4px',
+            borderRadius: '8px',
             maxWidth: '200px',
             pointerEvents: 'none',
-            zIndex: 100,
-            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+            zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
             whiteSpace: 'normal',
             wordWrap: 'break-word'
           }}
         >
-          <div style={{ fontWeight: 700, marginBottom: '4px' }}>{tooltip.version}</div>
-          <div style={{ marginBottom: '4px', color: 'rgb(209 213 219)' }}>{tooltip.title}</div>
-          <div style={{ color: 'rgb(156 163 175)' }}>
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>{tooltip.version}</div>
+          <div style={{ marginBottom: '4px', color: '#bbb' }}>{tooltip.title}</div>
+          <div style={{ color: '#808080', fontSize: '11px' }}>
             <div>Feedback: {tooltip.feedbackCount}</div>
-            {tooltip.nodesDelta > 0 && <div>Nodes Changed: {tooltip.nodesDelta}</div>}
+            {tooltip.nodesDelta > 0 && <div>Nodes changed: {tooltip.nodesDelta}</div>}
           </div>
         </div>
       )}
-
-      <VerticalSpace space="extraSmall" />
-      <Text style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-        Showing {bars.length} most recent {bars.length === 1 ? 'commit' : 'commits'}. Click a bar to view in
-        changelog.
-      </Text>
     </div>
   );
 }

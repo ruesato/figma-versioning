@@ -222,14 +222,43 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   );
 }
 
+// Gear icon SVG for settings button
+function GearIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M6.5 1L6.2 2.4C5.8 2.5 5.4 2.7 5.1 2.9L3.8 2.3L2.3 4.9L3.4 5.7C3.3 6.1 3.3 6.5 3.3 6.9C3.3 7.3 3.3 7.7 3.4 8.1L2.3 8.9L3.8 11.5L5.1 10.9C5.4 11.1 5.8 11.3 6.2 11.4L6.5 12.8H9.5L9.8 11.4C10.2 11.3 10.6 11.1 10.9 10.9L12.2 11.5L13.7 8.9L12.6 8.1C12.7 7.7 12.7 7.3 12.7 6.9C12.7 6.5 12.7 6.1 12.6 5.7L13.7 4.9L12.2 2.3L10.9 2.9C10.6 2.7 10.2 2.5 9.8 2.4L9.5 1H6.5ZM8 5C9.1 5 10 5.9 10 7C10 8.1 9.1 9 8 9C6.9 9 6 8.1 6 7C6 5.9 6.9 5 8 5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// Caret icon for dropdown
+function CaretIcon() {
+  return (
+    <svg width="14" height="8" viewBox="0 0 14 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 1L7 7L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+// Version type options
+const VERSION_TYPE_OPTIONS = [
+  { value: 'major', label: 'Major - Breaking changes (X.0.0)' },
+  { value: 'minor', label: 'Minor - New features (0.X.0)' },
+  { value: 'patch', label: 'Patch - Bug fixes (0.0.X)' }
+] as const;
+
 function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; hasToken: boolean }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [versioningMode, setVersioningMode] = useState<'semantic' | 'date-based'>('semantic');
+  const [versioningMode] = useState<'semantic' | 'date-based'>('semantic');
   const [incrementType, setIncrementType] = useState<'major' | 'minor' | 'patch'>('patch');
   const [nextVersion, setNextVersion] = useState<string>('');
   const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const MAX_TITLE_LENGTH = 100;
   const MAX_DESCRIPTION_LENGTH = 500;
@@ -240,20 +269,16 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     emit('GET_VERSIONING_MODE');
 
     const unsubscribe = on('VERSIONING_MODE', function (data: { mode: 'semantic' | 'date-based' }) {
-      setVersioningMode(data.mode);
+      // Keep semantic mode as default for the new UI
     });
 
     return unsubscribe;
   }, []);
 
-  // Update next version when versioning mode or increment type changes
+  // Update next version when increment type changes
   useEffect(() => {
-    if (versioningMode === 'semantic') {
-      emit('GET_NEXT_VERSION', { increment: incrementType, mode: 'semantic' });
-    } else {
-      emit('GET_NEXT_VERSION', { mode: 'date-based' });
-    }
-  }, [versioningMode, incrementType]);
+    emit('GET_NEXT_VERSION', { increment: incrementType, mode: 'semantic' });
+  }, [incrementType]);
 
   // Listen for next version updates
   useEffect(() => {
@@ -271,14 +296,12 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       if (!data.success) {
         setError(data.error || 'Failed to create version');
       }
-      // On success, the plugin will close automatically
     });
 
     return unsubscribe;
   }, []);
 
   function handleCreateVersion() {
-    // Validate title
     if (!title.trim()) {
       setError('Title is required');
       return;
@@ -295,284 +318,283 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
     setError('');
     setIsCreating(true);
 
-    // Emit CREATE_VERSION - main plugin will handle getting file key
     emit('CREATE_VERSION', {
       title,
       description: description.trim() || undefined,
       versioningMode,
-      incrementType: versioningMode === 'semantic' ? incrementType : undefined
+      incrementType
     });
   }
 
-  function handleTitleChange(value: string) {
+  function handleTitleChange(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
     setTitle(value);
-    // Clear error when user starts typing
-    if (error) {
-      setError('');
-    }
+    if (error) setError('');
   }
 
-  function handleDescriptionChange(value: string) {
+  function handleDescriptionChange(e: Event) {
+    const value = (e.target as HTMLTextAreaElement).value;
     setDescription(value);
-    // Clear error when user starts typing
-    if (error) {
-      setError('');
-    }
+    if (error) setError('');
   }
 
-  function handleVersioningModeChange(mode: 'semantic' | 'date-based') {
-    setVersioningMode(mode);
-    emit('SET_VERSIONING_MODE', { mode });
+  function handleSelectVersionType(type: 'major' | 'minor' | 'patch') {
+    setIncrementType(type);
+    setIsDropdownOpen(false);
   }
+
+  const selectedOption = VERSION_TYPE_OPTIONS.find(opt => opt.value === incrementType);
+  const buttonText = isCreating ? 'Creating...' : `Create version ${nextVersion || '1.0.0'}`;
+
+  // Styles matching Figma design
+  const styles = {
+    container: {
+      backgroundColor: '#2c2c2c',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '24px',
+      padding: '24px',
+      borderRadius: '16px',
+      width: '100%',
+      boxSizing: 'border-box' as const,
+      fontFamily: 'Inter, sans-serif'
+    },
+    sectionHeader: {
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '12px',
+      color: '#bbb',
+      textTransform: 'uppercase' as const,
+      margin: 0
+    },
+    fieldLabel: {
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '16px',
+      color: 'white',
+      margin: 0
+    },
+    fieldInput: {
+      backgroundColor: '#383838',
+      border: '1px solid #2c2c2c',
+      borderRadius: '8px',
+      padding: '12px 17px',
+      height: '48px',
+      width: '100%',
+      boxSizing: 'border-box' as const,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      color: 'white',
+      outline: 'none'
+    },
+    fieldCaption: {
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '12px',
+      color: '#808080',
+      textAlign: 'right' as const,
+      margin: 0
+    },
+    textarea: {
+      backgroundColor: '#383838',
+      border: '1px solid #2c2c2c',
+      borderRadius: '8px',
+      padding: '12px 17px',
+      width: '100%',
+      boxSizing: 'border-box' as const,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      color: 'white',
+      resize: 'none' as const,
+      outline: 'none',
+      minHeight: '140px'
+    },
+    dropdown: {
+      backgroundColor: '#383838',
+      border: '1px solid #2c2c2c',
+      borderRadius: '8px',
+      padding: '12px 17px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      cursor: 'pointer',
+      position: 'relative' as const
+    },
+    dropdownText: {
+      flex: '1 0 0',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      color: 'white',
+      margin: 0
+    },
+    dropdownMenu: {
+      position: 'absolute' as const,
+      top: '100%',
+      left: 0,
+      right: 0,
+      backgroundColor: '#383838',
+      border: '1px solid #2c2c2c',
+      borderRadius: '8px',
+      marginTop: '4px',
+      zIndex: 100,
+      overflow: 'hidden'
+    },
+    dropdownItem: {
+      padding: '12px 17px',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      color: 'white',
+      cursor: 'pointer',
+      backgroundColor: 'transparent'
+    },
+    primaryButton: {
+      backgroundColor: '#008ff0',
+      border: 'none',
+      borderRadius: '32px',
+      padding: '12px 24px',
+      minHeight: '48px',
+      flex: '1 0 0',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '16px',
+      color: 'white',
+      cursor: 'pointer',
+      textAlign: 'center' as const
+    },
+    settingsButton: {
+      backgroundColor: '#383838',
+      border: 'none',
+      borderRadius: '32px',
+      padding: '12px 24px',
+      minHeight: '48px',
+      width: '48px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      color: 'white'
+    },
+    errorText: {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '12px',
+      color: '#ff4444',
+      margin: 0
+    }
+  };
 
   return (
-    <Container space="small">
-      <VerticalSpace space="large" />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text>
-          <div class="text-2xl font-bold">Figma Versioning</div>
-        </Text>
-        <Button onClick={onOpenSettings} secondary>
-          Settings
-        </Button>
-      </div>
-      <VerticalSpace space="medium" />
-
-      {!hasToken && (
-        <>
-          <div
-            style={{
-              padding: '12px',
-              backgroundColor: 'var(--color-bg-warning)',
-              borderRadius: '4px'
-            }}
-          >
-            <Text>
-              <Bold>Limited Mode</Bold>
-            </Text>
-            <VerticalSpace space="extraSmall" />
-            <Muted>
-              Add a Personal Access Token in settings to enable comment and activity tracking.
-            </Muted>
-          </div>
-          <VerticalSpace space="medium" />
-        </>
-      )}
-
-      {/* Activity Histogram */}
-      <VerticalSpace space="medium" />
+    <div style={styles.container}>
+      {/* Recent Activity Section */}
       <HistogramPanel />
 
-      <VerticalSpace space="medium" />
+      {/* Create Commit Section */}
+      <p style={styles.sectionHeader}>Create a commit</p>
 
-      <Text>
-        <Bold>Create Commit</Bold>
-      </Text>
-      <VerticalSpace space="medium" />
-
-      {/* Title */}
-      <Text>
-        <Bold>Title</Bold>
-      </Text>
-      <VerticalSpace space="extraSmall" />
-      <Textbox
-        value={title}
-        onValueInput={handleTitleChange}
-        placeholder="Title"
-        disabled={isCreating}
-      />
-      <VerticalSpace space="extraSmall" />
-      <Muted>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Required</span>
-          <span style={{ color: title.length > MAX_TITLE_LENGTH ? 'var(--color-red)' : undefined }}>
-            {title.length}/{MAX_TITLE_LENGTH}
-          </span>
-        </div>
-      </Muted>
-
-      <VerticalSpace space="medium" />
-
-      {/* Description */}
-      <Text>
-        <Bold>Description</Bold>
-      </Text>
-      <VerticalSpace space="extraSmall" />
-      <textarea
-        value={description}
-        onInput={(e) => handleDescriptionChange((e.target as HTMLTextAreaElement).value)}
-        placeholder="Describe what changed..."
-        rows={4}
-        disabled={isCreating}
-        style={{
-          width: '100%',
-          padding: '8px',
-          fontSize: '11px',
-          fontFamily: 'Inter, sans-serif',
-          border: '1px solid var(--color-border)',
-          borderRadius: '2px',
-          backgroundColor: 'var(--color-bg)',
-          color: 'var(--color-text)',
-          resize: 'vertical',
-          minHeight: '80px',
-          boxSizing: 'border-box'
-        }}
-      />
-      <VerticalSpace space="extraSmall" />
-      <Muted>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Optional</span>
-          <span style={{ color: remainingDescChars < 0 ? 'var(--color-red)' : undefined }}>
-            {remainingDescChars} characters remaining
-          </span>
-        </div>
-      </Muted>
-
-      {error && (
-        <>
-          <VerticalSpace space="small" />
-          <Text>
-            <div style={{ color: 'var(--color-red)' }}>{error}</div>
-          </Text>
-        </>
-      )}
-
-      <VerticalSpace space="medium" />
-
-      {/* Versioning Mode */}
-      <Text>
-        <Bold>Versioning Mode</Bold>
-      </Text>
-      <VerticalSpace space="small" />
+      {/* Title Field */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-          <input
-            type="radio"
-            name="versioningMode"
-            value="semantic"
-            checked={versioningMode === 'semantic'}
-            onChange={() => handleVersioningModeChange('semantic')}
-            style={{ marginRight: '8px' }}
-          />
-          <div>
-            <Text>
-              <Bold>Semantic Versioning</Bold>
-            </Text>
-            <Muted>Auto-increment version numbers (e.g., 1.0.0, 1.1.0, 2.0.0)</Muted>
-          </div>
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-          <input
-            type="radio"
-            name="versioningMode"
-            value="date-based"
-            checked={versioningMode === 'date-based'}
-            onChange={() => handleVersioningModeChange('date-based')}
-            style={{ marginRight: '8px' }}
-          />
-          <div>
-            <Text>
-              <Bold>Date-based Versioning</Bold>
-            </Text>
-            <Muted>Use date with sequence suffix (e.g., 2026-01-14, 2026-01-14.1)</Muted>
-          </div>
-        </label>
+        <p style={styles.fieldLabel}>Title</p>
+        <input
+          type="text"
+          value={title}
+          onInput={handleTitleChange}
+          placeholder="Enter a title"
+          disabled={isCreating}
+          style={{
+            ...styles.fieldInput,
+            opacity: title ? 1 : 0.5
+          }}
+        />
+        <p style={styles.fieldCaption}>{title.length}/{MAX_TITLE_LENGTH}</p>
       </div>
 
-      {/* Semantic Version Increment Type */}
-      {versioningMode === 'semantic' && (
-        <>
-          <VerticalSpace space="medium" />
-          <Text>
-            <Bold>Increment Type</Bold>
-          </Text>
-          <VerticalSpace space="small" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="incrementType"
-                value="major"
-                checked={incrementType === 'major'}
-                onChange={() => setIncrementType('major')}
-                style={{ marginRight: '8px' }}
-              />
-              <div>
-                <Text>
-                  <Bold>Major</Bold>
-                </Text>
-                <Muted>Breaking changes (X.0.0)</Muted>
-              </div>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="incrementType"
-                value="minor"
-                checked={incrementType === 'minor'}
-                onChange={() => setIncrementType('minor')}
-                style={{ marginRight: '8px' }}
-              />
-              <div>
-                <Text>
-                  <Bold>Minor</Bold>
-                </Text>
-                <Muted>New features (0.X.0)</Muted>
-              </div>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="incrementType"
-                value="patch"
-                checked={incrementType === 'patch'}
-                onChange={() => setIncrementType('patch')}
-                style={{ marginRight: '8px' }}
-              />
-              <div>
-                <Text>
-                  <Bold>Patch</Bold>
-                </Text>
-                <Muted>Bug fixes (0.0.X)</Muted>
-              </div>
-            </label>
+      {/* Description Field */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', height: '220px' }}>
+        <p style={styles.fieldLabel}>Description</p>
+        <textarea
+          value={description}
+          onInput={handleDescriptionChange}
+          placeholder="Describe what changed"
+          disabled={isCreating}
+          style={{
+            ...styles.textarea,
+            flex: '1 0 0',
+            opacity: description ? 1 : 0.5
+          }}
+        />
+        <p style={styles.fieldCaption}>Optional. {remainingDescChars} characters remaining.</p>
+      </div>
+
+      {/* Version Type Dropdown */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <p style={styles.fieldLabel}>Version type</p>
+        <div
+          style={styles.dropdown}
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        >
+          <p style={styles.dropdownText}>{selectedOption?.label}</p>
+          <div style={{ color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px' }}>
+            <CaretIcon />
           </div>
-        </>
+          {isDropdownOpen && (
+            <div style={styles.dropdownMenu}>
+              {VERSION_TYPE_OPTIONS.map((option) => (
+                <div
+                  key={option.value}
+                  style={{
+                    ...styles.dropdownItem,
+                    backgroundColor: option.value === incrementType ? '#4a4a4a' : 'transparent'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectVersionType(option.value);
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = '#4a4a4a';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = option.value === incrementType ? '#4a4a4a' : 'transparent';
+                  }}
+                >
+                  {option.label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && <p style={styles.errorText}>{error}</p>}
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px 0' }}>
+        <button
+          style={{
+            ...styles.primaryButton,
+            opacity: isCreating ? 0.7 : 1,
+            cursor: isCreating ? 'not-allowed' : 'pointer'
+          }}
+          onClick={handleCreateVersion}
+          disabled={isCreating}
+        >
+          {buttonText}
+        </button>
+        <button
+          style={styles.settingsButton}
+          onClick={onOpenSettings}
+          title="Settings"
+        >
+          <GearIcon />
+        </button>
+      </div>
+
+      {/* Hidden: Limited mode warning shown as subtle hint if no token */}
+      {!hasToken && (
+        <p style={{ ...styles.fieldCaption, textAlign: 'left' as const }}>
+          Add a Personal Access Token in settings for full activity tracking.
+        </p>
       )}
-
-      <VerticalSpace space="medium" />
-
-      {/* Version Preview */}
-      <div
-        style={{
-          padding: '12px',
-          backgroundColor: 'var(--color-bg-secondary)',
-          borderRadius: '4px'
-        }}
-      >
-        <Text>
-          <Bold>Next Version</Bold>
-        </Text>
-        <VerticalSpace space="extraSmall" />
-        <Text>
-          <div style={{ fontSize: '16px', fontWeight: '600' }}>
-            {nextVersion || (versioningMode === 'semantic' ? '1.0.0' : new Date().toISOString().split('T')[0])}
-          </div>
-        </Text>
-        <VerticalSpace space="extraSmall" />
-        <Muted>
-          {versioningMode === 'semantic'
-            ? `Next ${incrementType} version`
-            : 'Date-based version (auto-sequenced)'
-          }
-        </Muted>
-      </div>
-
-      <VerticalSpace space="medium" />
-      <Button onClick={handleCreateVersion} fullWidth disabled={isCreating}>
-        {isCreating ? 'Creating...' : 'Create Commit'}
-      </Button>
-    </Container>
+    </div>
   );
 }
 
