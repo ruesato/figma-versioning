@@ -222,16 +222,9 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   );
 }
 
-// Gear icon SVG for settings button
+// Gear icon for settings button
 function GearIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" style={{ display: 'block' }}>
-      <path
-        fill="white"
-        d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64z"
-      />
-    </svg>
-  );
+  return <span style={{ fontSize: '16px', lineHeight: '1' }}>⚙️</span>;
 }
 
 // Caret icon for dropdown
@@ -352,14 +345,35 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       backgroundColor: '#2c2c2c',
       display: 'flex',
       flexDirection: 'column' as const,
-      gap: '24px',
-      padding: '24px',
-      borderRadius: '16px',
       width: '100%',
       maxWidth: '100%',
+      height: '100%',
       boxSizing: 'border-box' as const,
       fontFamily: 'Inter, sans-serif',
       overflow: 'hidden' as const
+    },
+    scrollableContent: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '24px',
+      padding: '24px 24px 180px 24px',
+      borderRadius: '16px',
+      flex: '1 1 auto',
+      overflowY: 'auto' as const,
+      overflowX: 'hidden' as const,
+      width: '100%',
+      boxSizing: 'border-box' as const
+    },
+    actionBar: {
+      display: 'flex',
+      gap: '16px',
+      alignItems: 'center',
+      padding: '16px 24px',
+      backgroundColor: '#2c2c2c',
+      borderTop: '1px solid #383838',
+      flexShrink: 0,
+      width: '100%',
+      boxSizing: 'border-box' as const
     },
     sectionHeader: {
       fontFamily: 'Inter, sans-serif',
@@ -486,90 +500,100 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
 
   return (
     <div style={styles.container}>
-      {/* Recent Activity Section */}
-      <HistogramPanel />
+      {/* Scrollable Content Area */}
+      <div style={styles.scrollableContent}>
+        {/* Recent Activity Section */}
+        <HistogramPanel />
 
-      {/* Create Commit Section */}
-      <p style={styles.sectionHeader}>Create a commit</p>
+        {/* Create Commit Section */}
+        <p style={styles.sectionHeader}>Create a commit</p>
 
-      {/* Title Field */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <p style={styles.fieldLabel}>Title</p>
-        <input
-          type="text"
-          value={title}
-          onInput={handleTitleChange}
-          placeholder="Enter a title"
-          disabled={isCreating}
-          style={{
-            ...styles.fieldInput,
-            opacity: title ? 1 : 0.5
-          }}
-        />
-        <p style={styles.fieldCaption}>{title.length}/{MAX_TITLE_LENGTH}</p>
-      </div>
-
-      {/* Description Field */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', height: '220px' }}>
-        <p style={styles.fieldLabel}>Description</p>
-        <textarea
-          value={description}
-          onInput={handleDescriptionChange}
-          placeholder="Describe what changed"
-          disabled={isCreating}
-          style={{
-            ...styles.textarea,
-            flex: '1 0 0',
-            opacity: description ? 1 : 0.5
-          }}
-        />
-        <p style={styles.fieldCaption}>Optional. {remainingDescChars} characters remaining.</p>
-      </div>
-
-      {/* Version Type Dropdown */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <p style={styles.fieldLabel}>Version type</p>
-        <div
-          style={styles.dropdown}
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        >
-          <p style={styles.dropdownText}>{selectedOption?.label}</p>
-          <div style={{ color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px' }}>
-            <CaretIcon />
-          </div>
-          {isDropdownOpen && (
-            <div style={styles.dropdownMenu}>
-              {VERSION_TYPE_OPTIONS.map((option) => (
-                <div
-                  key={option.value}
-                  style={{
-                    ...styles.dropdownItem,
-                    backgroundColor: option.value === incrementType ? '#4a4a4a' : 'transparent'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectVersionType(option.value);
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = '#4a4a4a';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = option.value === incrementType ? '#4a4a4a' : 'transparent';
-                  }}
-                >
-                  {option.label}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Title Field */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={styles.fieldLabel}>Title</p>
+          <input
+            type="text"
+            value={title}
+            onInput={handleTitleChange}
+            placeholder="Enter a title"
+            disabled={isCreating}
+            style={{
+              ...styles.fieldInput,
+              opacity: title ? 1 : 0.5
+            }}
+          />
+          <p style={styles.fieldCaption}>{title.length}/{MAX_TITLE_LENGTH}</p>
         </div>
+
+        {/* Description Field */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', height: '220px' }}>
+          <p style={styles.fieldLabel}>Description</p>
+          <textarea
+            value={description}
+            onInput={handleDescriptionChange}
+            placeholder="Describe what changed"
+            disabled={isCreating}
+            style={{
+              ...styles.textarea,
+              flex: '1 0 0',
+              opacity: description ? 1 : 0.5
+            }}
+          />
+          <p style={styles.fieldCaption}>Optional. {remainingDescChars} characters remaining.</p>
+        </div>
+
+        {/* Version Type Dropdown */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={styles.fieldLabel}>Version type</p>
+          <div
+            style={styles.dropdown}
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          >
+            <p style={styles.dropdownText}>{selectedOption?.label}</p>
+            <div style={{ color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px' }}>
+              <CaretIcon />
+            </div>
+            {isDropdownOpen && (
+              <div style={styles.dropdownMenu}>
+                {VERSION_TYPE_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    style={{
+                      ...styles.dropdownItem,
+                      backgroundColor: option.value === incrementType ? '#4a4a4a' : 'transparent'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectVersionType(option.value);
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = '#4a4a4a';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = option.value === incrementType ? '#4a4a4a' : 'transparent';
+                    }}
+                  >
+                    {option.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {error && <p style={styles.errorText}>{error}</p>}
+
+        {/* Limited mode warning */}
+        {!hasToken && (
+          <p style={{ ...styles.fieldCaption, textAlign: 'left' as const }}>
+            Add a Personal Access Token in settings for full activity tracking.
+          </p>
+        )}
       </div>
 
-      {/* Error Message */}
-      {error && <p style={styles.errorText}>{error}</p>}
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px 0' }}>
+      {/* Fixed Action Bar at Bottom */}
+      <div style={styles.actionBar}>
         <button
           style={{
             ...styles.primaryButton,
@@ -589,13 +613,6 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
           <GearIcon />
         </button>
       </div>
-
-      {/* Hidden: Limited mode warning shown as subtle hint if no token */}
-      {!hasToken && (
-        <p style={{ ...styles.fieldCaption, textAlign: 'left' as const }}>
-          Add a Personal Access Token in settings for full activity tracking.
-        </p>
-      )}
     </div>
   );
 }
