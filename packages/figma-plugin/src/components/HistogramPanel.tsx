@@ -160,7 +160,7 @@ export function HistogramPanel() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', width: '100%', maxWidth: '100%', minWidth: 0,  }}>
         <p style={{
           fontFamily: 'Inter, sans-serif',
           fontWeight: 400,
@@ -184,7 +184,7 @@ export function HistogramPanel() {
 
   if (bars.length === 0) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', width: '100%', maxWidth: '100%', minWidth: 0,  }}>
         <p style={{
           fontFamily: 'Inter, sans-serif',
           fontWeight: 400,
@@ -210,7 +210,7 @@ export function HistogramPanel() {
   const maxValue = Math.max(...bars.map((bar) => bar.totalHeight), 1);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', position: 'relative', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', position: 'relative', width: '100%', maxWidth: '100%', minWidth: 0,  }}>
       <p style={{
         fontFamily: 'Inter, sans-serif',
         fontWeight: 400,
