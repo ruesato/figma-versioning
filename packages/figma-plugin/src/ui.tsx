@@ -347,18 +347,16 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       flexDirection: 'column' as const,
       width: '100%',
       maxWidth: '100%',
-      height: '100%',
       boxSizing: 'border-box' as const,
-      fontFamily: 'Inter, sans-serif',
-      overflow: 'hidden' as const
+      fontFamily: 'Inter, sans-serif'
     },
     scrollableContent: {
       display: 'flex',
       flexDirection: 'column' as const,
       gap: '24px',
       padding: '24px 24px 180px 24px',
-      borderRadius: '16px',
       flex: '1 1 auto',
+      minHeight: 0,
       overflowY: 'auto' as const,
       overflowX: 'hidden' as const,
       width: '100%',
