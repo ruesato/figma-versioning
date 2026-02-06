@@ -79,20 +79,34 @@ function calculateHistogramBars(commits: Commit[], maxBars: number = 50): Histog
 }
 
 /**
- * Calculate scale factor for bar heights
+ * Calculate bar height using square root scale
+ *
+ * Square root scaling compresses large values while keeping small values visible.
+ * This makes it easier to compare commits with large disparities in activity.
+ *
+ * Example impact:
+ * - Value 10,000 → 100% height (max)
+ * - Value 2,500  → 50% height (instead of 25% with linear)
+ * - Value 100    → 10% height (instead of 1% with linear)
+ * - Value 10     → 3% height (instead of 0.1% with linear)
  */
-function calculateScale(bars: HistogramBar[], maxHeight: number): number {
-  if (bars.length === 0) {
-    return 1;
+function calculateBarHeight(
+  value: number,
+  maxValue: number,
+  maxHeight: number,
+  minHeight: number
+): number {
+  if (maxValue === 0 || value === 0) {
+    return minHeight; // Still show a minimal bar for zero values
   }
 
-  const maxValue = Math.max(...bars.map((bar) => bar.totalHeight));
+  // Square root scale: height = maxHeight * sqrt(value) / sqrt(maxValue)
+  const sqrtValue = Math.sqrt(value);
+  const sqrtMax = Math.sqrt(maxValue);
+  const height = Math.round((sqrtValue / sqrtMax) * maxHeight);
 
-  if (maxValue === 0) {
-    return 1;
-  }
-
-  return maxHeight / maxValue;
+  // Ensure minimum height for visibility and hover interaction
+  return Math.max(height, minHeight);
 }
 
 export function HistogramPanel() {
@@ -103,6 +117,7 @@ export function HistogramPanel() {
   console.log('[HistogramPanel] Component rendering, bars:', bars.length, 'loading:', loading);
 
   const MAX_HEIGHT = 160; // pixels - matches Figma design
+  const MIN_BAR_HEIGHT = 4; // pixels - ensures all bars are visible and hoverable
   const BAR_GAP = 4; // pixels
 
   // Load commits on mount
@@ -191,7 +206,8 @@ export function HistogramPanel() {
     );
   }
 
-  const scale = calculateScale(bars, MAX_HEIGHT);
+  // Find max value for scaling (using totalHeight which is feedbackCount + nodesDelta)
+  const maxValue = Math.max(...bars.map((bar) => bar.totalHeight), 1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '24px', position: 'relative', width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
@@ -207,7 +223,7 @@ export function HistogramPanel() {
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: 0 }}>
-        {/* Histogram bars */}
+        {/* Histogram bars - using square root scale for better visibility of small values */}
         <div
           style={{
             display: 'flex',
@@ -219,20 +235,20 @@ export function HistogramPanel() {
           }}
         >
           {bars.map((bar) => {
-            const feedbackHeight = Math.round(bar.feedbackCount * scale);
-            const nodesDeltaHeight = Math.round(bar.nodesDelta * scale);
             // Determine primary color based on which value is larger
             const isFeedbackDominant = bar.feedbackCount > bar.nodesDelta;
             const barColor = isFeedbackDominant ? '#0885fe' : '#ff6800';
-            const totalHeight = Math.max(feedbackHeight + nodesDeltaHeight, 1);
+
+            // Calculate height using square root scale for better distribution
+            const barHeight = calculateBarHeight(bar.totalHeight, maxValue, MAX_HEIGHT, MIN_BAR_HEIGHT);
 
             return (
               <div
                 key={bar.commitId}
                 style={{
                   flex: '1 0 0',
-                  height: `${totalHeight}px`,
-                  minHeight: '1px',
+                  height: `${barHeight}px`,
+                  minHeight: `${MIN_BAR_HEIGHT}px`,
                   minWidth: '1px',
                   backgroundColor: barColor,
                   cursor: 'pointer'
