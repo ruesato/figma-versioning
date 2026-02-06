@@ -13,6 +13,7 @@ import { formatPropertyValue } from './property-formatter';
 const FRAME_WIDTH = 600;
 const PADDING = 16;
 const SECTION_SPACING = 12;
+const LABEL_WIDTH = 88; // Width for property labels in columnar layout
 
 /**
  * Load Inter font for text rendering
@@ -42,7 +43,11 @@ function createText(
 }
 
 /**
- * Create header section with version, author, and timestamp
+ * Create header section with gray background containing:
+ * - Version row (split "Version" + version number styling)
+ * - Author and timestamp
+ * - Title (bold)
+ * - Description (if provided)
  */
 function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode {
   const header = figma.createFrame();
@@ -50,18 +55,29 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   header.layoutMode = 'VERTICAL';
   header.primaryAxisSizingMode = 'AUTO';
   header.counterAxisSizingMode = 'FIXED';
-  header.resize(FRAME_WIDTH - PADDING * 2, 50);
-  header.itemSpacing = 4;
-  header.fills = [];
+  header.resize(FRAME_WIDTH, 50);
+  header.itemSpacing = 8;
+  header.paddingTop = PADDING;
+  header.paddingBottom = PADDING;
+  header.paddingLeft = PADDING;
+  header.paddingRight = PADDING;
+  header.fills = [{ type: 'SOLID', color: colors.headerBackground }];
 
-  // Version text
-  const versionText = createText(
-    `Version ${commit.version}`,
-    16,
-    'Bold',
-    colors.text
-  );
-  header.appendChild(versionText);
+  // Version row - split styling for "Version" and version number
+  const versionRow = figma.createFrame();
+  versionRow.name = 'Version Row';
+  versionRow.layoutMode = 'HORIZONTAL';
+  versionRow.primaryAxisSizingMode = 'AUTO';
+  versionRow.counterAxisSizingMode = 'AUTO';
+  versionRow.itemSpacing = 4;
+  versionRow.fills = [];
+
+  const versionLabel = createText('Version', 16, 'Regular', colors.textSecondary);
+  const versionNumber = createText(commit.version, 16, 'Bold', colors.text);
+  versionRow.appendChild(versionLabel);
+  versionRow.appendChild(versionNumber);
+  versionRow.locked = true;
+  header.appendChild(versionRow);
 
   // Metadata text (author and timestamp)
   const timestamp = new Date(commit.timestamp).toLocaleString();
@@ -69,102 +85,104 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
     `${commit.author.name} • ${timestamp}`,
     12,
     'Regular',
-    colors.textSecondary
+    colors.textMuted
   );
   header.appendChild(metaText);
 
-  header.locked = true;
-  return header;
-}
-
-/**
- * Create title and description section
- */
-function createMessageSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode {
-  const messageFrame = figma.createFrame();
-  messageFrame.name = 'Title and Description';
-  messageFrame.layoutMode = 'VERTICAL';
-  messageFrame.primaryAxisSizingMode = 'AUTO';
-  messageFrame.counterAxisSizingMode = 'FIXED';
-  messageFrame.resize(FRAME_WIDTH - PADDING * 2, messageFrame.height);
-  messageFrame.itemSpacing = 12; // Increased from 8 to match SECTION_SPACING
-  messageFrame.fills = [];
-
-  // Title (prominent, bold, primary color)
+  // Title (prominent, bold)
   const titleText = createText(
     commit.title,
-    16,
+    14,
     'Bold',
     colors.text
   );
   titleText.textAutoResize = 'HEIGHT';
   titleText.resize(FRAME_WIDTH - PADDING * 2, titleText.height);
-  messageFrame.appendChild(titleText);
+  header.appendChild(titleText);
 
-  // Debug logging
-  console.log('Commit data:', {
-    title: commit.title,
-    description: commit.description,
-    hasDescription: !!commit.description,
-    descriptionLength: commit.description?.length || 0
-  });
-
-  // Description (if provided, regular weight, secondary color for visual hierarchy)
+  // Description (if provided)
   if (commit.description && commit.description.trim().length > 0) {
-    console.log('Rendering description:', commit.description);
     const descriptionText = createText(
       commit.description,
-      13, // Reduced from 14 to 13 for better contrast with title
+      13,
       'Regular',
-      colors.textSecondary // Changed from text to textSecondary for visual hierarchy
+      colors.textSecondary
     );
     descriptionText.textAutoResize = 'HEIGHT';
     descriptionText.resize(FRAME_WIDTH - PADDING * 2, descriptionText.height);
-
-    console.log('Description text node created:', {
-      id: descriptionText.id,
-      name: descriptionText.name,
-      visible: descriptionText.visible,
-      width: descriptionText.width,
-      height: descriptionText.height,
-      characters: descriptionText.characters,
-      fontSize: descriptionText.fontSize,
-      fills: descriptionText.fills,
-      parent: messageFrame.name
-    });
-
-    messageFrame.appendChild(descriptionText);
-    console.log('Description appended to frame. Frame children count:', messageFrame.children.length);
-  } else {
-    console.log('No description to render');
+    header.appendChild(descriptionText);
   }
 
-  console.log('Final messageFrame state:', {
-    name: messageFrame.name,
-    childrenCount: messageFrame.children.length,
-    width: messageFrame.width,
-    height: messageFrame.height,
-    layoutMode: messageFrame.layoutMode,
-    itemSpacing: messageFrame.itemSpacing,
-    visible: messageFrame.visible
-  });
+  header.locked = true;
+  return header;
+}
 
-  messageFrame.locked = true;
-  return messageFrame;
+// Note: Title and description are now part of createHeaderSection
+
+/**
+ * Create a section header with uppercase title and colored badge
+ */
+function createSectionHeader(
+  title: string,
+  count: number,
+  badgeColor: RGB,
+  colors: ReturnType<typeof getThemeColors>
+): FrameNode {
+  const headerRow = figma.createFrame();
+  headerRow.name = 'Section Header';
+  headerRow.layoutMode = 'HORIZONTAL';
+  headerRow.primaryAxisSizingMode = 'AUTO';
+  headerRow.counterAxisSizingMode = 'AUTO';
+  headerRow.itemSpacing = 8;
+  headerRow.fills = [];
+  headerRow.counterAxisAlignItems = 'CENTER';
+
+  // Uppercase title
+  const titleText = createText(title.toUpperCase(), 12, 'Medium', colors.textMuted);
+  headerRow.appendChild(titleText);
+
+  // Badge with count
+  const badge = figma.createFrame();
+  badge.name = 'Badge';
+  badge.layoutMode = 'HORIZONTAL';
+  badge.primaryAxisSizingMode = 'AUTO';
+  badge.counterAxisSizingMode = 'AUTO';
+  badge.paddingTop = 2;
+  badge.paddingBottom = 2;
+  badge.paddingLeft = 6;
+  badge.paddingRight = 6;
+  badge.cornerRadius = 10;
+  badge.fills = [{ type: 'SOLID', color: badgeColor }];
+
+  const badgeText = createText(String(count), 10, 'Medium', { r: 1, g: 1, b: 1 });
+  badge.appendChild(badgeText);
+  badge.locked = true;
+  headerRow.appendChild(badge);
+
+  headerRow.locked = true;
+  return headerRow;
 }
 
 /**
  * Create a single comment item frame
  */
-function createCommentItem(comment: import('@figma-versioning/core').Comment, colors: ReturnType<typeof getThemeColors>): FrameNode {
+function createCommentItem(
+  comment: import('@figma-versioning/core').Comment,
+  colors: ReturnType<typeof getThemeColors>,
+  isReply: boolean = false
+): FrameNode {
   const commentFrame = figma.createFrame();
-  commentFrame.name = 'Comment Item';
+  commentFrame.name = isReply ? 'Reply Item' : 'Comment Item';
   commentFrame.layoutMode = 'VERTICAL';
   commentFrame.primaryAxisSizingMode = 'AUTO';
   commentFrame.counterAxisSizingMode = 'FIXED';
-  commentFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, commentFrame.height);
+  const frameWidth = isReply ? FRAME_WIDTH - PADDING * 2 - 16 : FRAME_WIDTH - PADDING * 2;
+  commentFrame.resize(frameWidth, commentFrame.height);
   commentFrame.itemSpacing = 4;
   commentFrame.fills = [];
+  if (isReply) {
+    commentFrame.paddingLeft = 16;
+  }
 
   // Author and timestamp
   const timestamp = new Date(comment.timestamp).toLocaleString();
@@ -172,7 +190,7 @@ function createCommentItem(comment: import('@figma-versioning/core').Comment, co
     `${comment.author.name} • ${timestamp}`,
     11,
     'Regular',
-    colors.textSecondary
+    colors.textMuted
   );
   commentFrame.appendChild(metaText);
 
@@ -184,18 +202,31 @@ function createCommentItem(comment: import('@figma-versioning/core').Comment, co
     colors.text
   );
   commentText.textAutoResize = 'HEIGHT';
-  commentText.resize(FRAME_WIDTH - PADDING * 2 - 16, commentText.height);
+  commentText.resize(frameWidth, commentText.height);
   commentFrame.appendChild(commentText);
 
-  // Node ID (if available)
+  // Node reference with click-to-navigate (if available)
   if (comment.nodeId) {
-    const nodeIdText = createText(
-      `Node: ${comment.nodeId}`,
+    const nodeRefText = createText(
+      `On layer: ${comment.nodeId}`,
       10,
       'Regular',
-      colors.textSecondary
+      colors.accent
     );
-    commentFrame.appendChild(nodeIdText);
+    nodeRefText.textDecoration = 'UNDERLINE';
+    nodeRefText.locked = false; // Allow interaction
+
+    // Add hyperlink to navigate to the node
+    try {
+      nodeRefText.hyperlink = { type: 'NODE', value: comment.nodeId };
+    } catch {
+      // Node may not exist anymore, fall back to non-interactive style
+      nodeRefText.fills = [{ type: 'SOLID', color: colors.textSecondary }];
+      nodeRefText.textDecoration = 'NONE';
+      nodeRefText.locked = true;
+    }
+
+    commentFrame.appendChild(nodeRefText);
   }
 
   commentFrame.locked = true;
@@ -203,7 +234,7 @@ function createCommentItem(comment: import('@figma-versioning/core').Comment, co
 }
 
 /**
- * Create comments section (conditional)
+ * Create comments section with uppercase header and orange badge
  */
 function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
   if (commit.comments.length === 0) {
@@ -218,28 +249,28 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
   commentsFrame.layoutMode = 'VERTICAL';
   commentsFrame.primaryAxisSizingMode = 'AUTO';
   commentsFrame.counterAxisSizingMode = 'FIXED';
-  commentsFrame.resize(FRAME_WIDTH - PADDING * 2, commentsFrame.height);
-  commentsFrame.itemSpacing = 8;
-  commentsFrame.fills = [{ type: 'SOLID', color: colors.surface }];
-  commentsFrame.paddingTop = 8;
-  commentsFrame.paddingBottom = 8;
-  commentsFrame.paddingLeft = 8;
-  commentsFrame.paddingRight = 8;
-  commentsFrame.cornerRadius = 4;
+  commentsFrame.resize(FRAME_WIDTH, commentsFrame.height);
+  commentsFrame.itemSpacing = 12;
+  commentsFrame.paddingLeft = PADDING;
+  commentsFrame.paddingRight = PADDING;
+  commentsFrame.fills = [];
 
-  // Section title
-  const titleText = createText(
-    `Comments (${commit.comments.length})`,
-    12,
-    'Medium',
-    colors.textSecondary
-  );
-  commentsFrame.appendChild(titleText);
+  // Section header with badge
+  const sectionHeader = createSectionHeader('Comments', commit.comments.length, colors.commentBadge, colors);
+  commentsFrame.appendChild(sectionHeader);
 
-  // Add individual comment items
+  // Add individual comment items with threading support
   for (const comment of commit.comments) {
-    const commentItem = createCommentItem(comment, colors);
+    const commentItem = createCommentItem(comment, colors, false);
     commentsFrame.appendChild(commentItem);
+
+    // Add replies if they exist (threaded comments)
+    if ('replies' in comment && Array.isArray(comment.replies)) {
+      for (const reply of comment.replies as import('@figma-versioning/core').Comment[]) {
+        const replyItem = createCommentItem(reply, colors, true);
+        commentsFrame.appendChild(replyItem);
+      }
+    }
   }
 
   commentsFrame.locked = true;
@@ -247,23 +278,48 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
 }
 
 /**
- * Create a single annotation item frame
+ * Create a property row with columnar layout (fixed-width label, flexible value)
+ */
+function createPropertyRow(
+  label: string,
+  value: string,
+  colors: ReturnType<typeof getThemeColors>,
+  width: number = FRAME_WIDTH - PADDING * 2
+): FrameNode {
+  const row = figma.createFrame();
+  row.name = 'Property Row';
+  row.layoutMode = 'HORIZONTAL';
+  row.primaryAxisSizingMode = 'FIXED';
+  row.counterAxisSizingMode = 'AUTO';
+  row.resize(width, row.height);
+  row.itemSpacing = 8;
+  row.fills = [];
+
+  // Label with fixed width
+  const labelText = createText(label, 11, 'Regular', colors.textMuted);
+  labelText.resize(LABEL_WIDTH, labelText.height);
+  labelText.textTruncation = 'ENDING';
+  row.appendChild(labelText);
+
+  // Value with flexible width
+  const valueText = createText(value, 11, 'Regular', colors.text);
+  valueText.textAutoResize = 'HEIGHT';
+  valueText.layoutGrow = 1;
+  row.appendChild(valueText);
+
+  row.locked = true;
+  return row;
+}
+
+/**
+ * Create a single annotation item frame with columnar property layout
  *
  * Renders an annotation with:
- * - Label text (primary, 12px)
- * - Node ID reference (secondary, 10px)
- * - Pinned properties (if any) displayed vertically (secondary, 10px)
+ * - Header row with label and optional pin icon
+ * - Layer reference
+ * - Properties in columnar layout (88px label, flexible value)
  *
- * Property Rendering:
- * - Each property is displayed as "Label: value" format
- * - Property names are converted to human-readable labels (e.g., "fontSize" → "Font Size")
- * - Values are formatted based on type (colors as hex, numbers with units, etc.)
- * - Properties are displayed in the order they appear in annotation.properties
- * - Null/undefined properties are skipped
- *
- * @param annotation - The annotation data to render
- * @param colors - Theme colors for text and backgrounds
- * @returns A frame containing the annotation item
+ * Only displays properties that have values (non-null, non-undefined)
  */
 function createAnnotationItem(annotation: import('@figma-versioning/core').Annotation, colors: ReturnType<typeof getThemeColors>): FrameNode {
   const annotationFrame = figma.createFrame();
@@ -271,34 +327,60 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
   annotationFrame.layoutMode = 'VERTICAL';
   annotationFrame.primaryAxisSizingMode = 'AUTO';
   annotationFrame.counterAxisSizingMode = 'FIXED';
-  annotationFrame.resize(FRAME_WIDTH - PADDING * 2 - 16, annotationFrame.height);
-  annotationFrame.itemSpacing = 4;
+  annotationFrame.resize(FRAME_WIDTH - PADDING * 2, annotationFrame.height);
+  annotationFrame.itemSpacing = 6;
   annotationFrame.fills = [];
+
+  // Header row with label and pin icon
+  const headerRow = figma.createFrame();
+  headerRow.name = 'Annotation Header';
+  headerRow.layoutMode = 'HORIZONTAL';
+  headerRow.primaryAxisSizingMode = 'AUTO';
+  headerRow.counterAxisSizingMode = 'AUTO';
+  headerRow.itemSpacing = 6;
+  headerRow.fills = [];
+  headerRow.counterAxisAlignItems = 'CENTER';
+
+  // Pin icon for pinned items
+  if (annotation.isPinned) {
+    const pinIcon = createText('📌', 12, 'Regular', colors.text);
+    headerRow.appendChild(pinIcon);
+  }
 
   // Label text - use labelMarkdown if available in properties, otherwise use label
   const labelContent = (annotation.properties?.labelMarkdown as string) || annotation.label;
-  const labelText = createText(
-    labelContent,
-    12,
-    'Regular',
-    colors.text
-  );
-  labelText.textAutoResize = 'HEIGHT';
-  labelText.resize(FRAME_WIDTH - PADDING * 2 - 16, labelText.height);
-  annotationFrame.appendChild(labelText);
+  const labelText = createText(labelContent, 12, 'Medium', colors.text);
+  labelText.textAutoResize = 'WIDTH_AND_HEIGHT';
+  headerRow.appendChild(labelText);
 
-  // Layer reference - use node name if available, fallback to ID
+  headerRow.locked = true;
+  annotationFrame.appendChild(headerRow);
+
+  // Layer reference with click-to-navigate
   const nodeName = annotation.properties?.nodeName as string | undefined;
   const nodeDisplayText = nodeName || annotation.nodeId;
-  const nodeIdText = createText(
-    `Layer: ${nodeDisplayText}${annotation.isPinned ? ' (Pinned)' : ''}`,
+  const nodeRefText = createText(
+    `Layer: ${nodeDisplayText}`,
     10,
     'Regular',
-    colors.textSecondary
+    colors.accent
   );
-  annotationFrame.appendChild(nodeIdText);
+  nodeRefText.textDecoration = 'UNDERLINE';
+  nodeRefText.locked = false; // Allow interaction
 
-  // Display annotation properties (if any)
+  // Add hyperlink to navigate to the node
+  try {
+    nodeRefText.hyperlink = { type: 'NODE', value: annotation.nodeId };
+  } catch {
+    // Node may not exist anymore, fall back to non-interactive style
+    nodeRefText.fills = [{ type: 'SOLID', color: colors.textSecondary }];
+    nodeRefText.textDecoration = 'NONE';
+    nodeRefText.locked = true;
+  }
+
+  annotationFrame.appendChild(nodeRefText);
+
+  // Display annotation properties in columnar layout (only if they have values)
   if (annotation.properties && Object.keys(annotation.properties).length > 0) {
     const annotationProps = annotation.properties;
 
@@ -311,29 +393,25 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
         if (!prop || !prop.type) continue;
 
         const propertyName = prop.type;
-        // The value might be in a 'value' field or directly in the object
         const propertyValue = 'value' in prop ? prop.value : prop;
+
+        // Skip null/undefined values
+        if (propertyValue === null || propertyValue === undefined) continue;
 
         const label = getPropertyLabel(propertyName);
         const formattedValue = formatPropertyValue(propertyValue, propertyName);
 
-        const propertyText = createText(
-          `${label}: ${formattedValue}`,
-          10,
-          'Regular',
-          colors.textSecondary
-        );
-        propertyText.textAutoResize = 'HEIGHT';
-        propertyText.resize(FRAME_WIDTH - PADDING * 2 - 16, propertyText.height);
-        annotationFrame.appendChild(propertyText);
+        // Skip empty formatted values
+        if (!formattedValue || formattedValue.trim() === '') continue;
+
+        const propertyRow = createPropertyRow(label, formattedValue, colors);
+        annotationFrame.appendChild(propertyRow);
       }
     } else {
       // Fallback: display top-level properties (skip metadata fields)
       for (const [propertyName, propertyValue] of Object.entries(annotationProps)) {
         // Skip invalid or empty properties
-        if (propertyValue === null || propertyValue === undefined) {
-          continue;
-        }
+        if (propertyValue === null || propertyValue === undefined) continue;
 
         // Skip properties that are metadata or already displayed
         if (propertyName === 'labelMarkdown' || propertyName === 'label' ||
@@ -346,15 +424,11 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
         const label = getPropertyLabel(propertyName);
         const formattedValue = formatPropertyValue(propertyValue, propertyName);
 
-        const propertyText = createText(
-          `${label}: ${formattedValue}`,
-          10,
-          'Regular',
-          colors.textSecondary
-        );
-        propertyText.textAutoResize = 'HEIGHT';
-        propertyText.resize(FRAME_WIDTH - PADDING * 2 - 16, propertyText.height);
-        annotationFrame.appendChild(propertyText);
+        // Skip empty formatted values
+        if (!formattedValue || formattedValue.trim() === '') continue;
+
+        const propertyRow = createPropertyRow(label, formattedValue, colors);
+        annotationFrame.appendChild(propertyRow);
       }
     }
   }
@@ -364,7 +438,7 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
 }
 
 /**
- * Create annotations section (conditional)
+ * Create annotations section with uppercase header and blue badge
  */
 function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
   if (commit.annotations.length === 0) {
@@ -376,23 +450,15 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
   annotationsFrame.layoutMode = 'VERTICAL';
   annotationsFrame.primaryAxisSizingMode = 'AUTO';
   annotationsFrame.counterAxisSizingMode = 'FIXED';
-  annotationsFrame.resize(FRAME_WIDTH - PADDING * 2, annotationsFrame.height);
-  annotationsFrame.itemSpacing = 8;
-  annotationsFrame.fills = [{ type: 'SOLID', color: colors.surface }];
-  annotationsFrame.paddingTop = 8;
-  annotationsFrame.paddingBottom = 8;
-  annotationsFrame.paddingLeft = 8;
-  annotationsFrame.paddingRight = 8;
-  annotationsFrame.cornerRadius = 4;
+  annotationsFrame.resize(FRAME_WIDTH, annotationsFrame.height);
+  annotationsFrame.itemSpacing = 12;
+  annotationsFrame.paddingLeft = PADDING;
+  annotationsFrame.paddingRight = PADDING;
+  annotationsFrame.fills = [];
 
-  // Section title
-  const titleText = createText(
-    `Annotations (${commit.annotations.length})`,
-    12,
-    'Medium',
-    colors.textSecondary
-  );
-  annotationsFrame.appendChild(titleText);
+  // Section header with badge
+  const sectionHeader = createSectionHeader('Annotations', commit.annotations.length, colors.annotationBadge, colors);
+  annotationsFrame.appendChild(sectionHeader);
 
   // Add individual annotation items
   for (const annotation of commit.annotations) {
@@ -433,22 +499,16 @@ export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode>
   container.counterAxisSizingMode = 'AUTO';
   container.resize(FRAME_WIDTH, 100);
   container.itemSpacing = SECTION_SPACING;
-  container.paddingTop = PADDING;
   container.paddingBottom = PADDING;
-  container.paddingLeft = PADDING;
-  container.paddingRight = PADDING;
   container.fills = [{ type: 'SOLID', color: colors.background }];
   container.strokes = [{ type: 'SOLID', color: colors.border }];
   container.strokeWeight = 1;
   container.cornerRadius = 8;
+  container.clipsContent = true;
 
-  // Add header section
+  // Add header section (includes version, author, timestamp, title, description)
   const header = createHeaderSection(commit, colors);
   container.appendChild(header);
-
-  // Add message section
-  const message = createMessageSection(commit, colors);
-  container.appendChild(message);
 
   // Add comments section (if any)
   const comments = createCommentsSection(commit, colors);
