@@ -74,8 +74,9 @@ function calculateHistogramBars(commits: Commit[], maxBars: number = 50): Histog
     };
   });
 
-  // Return in reverse chronological order (newest first) for display
-  return bars.reverse();
+  // Return in chronological order (oldest first) for display
+  // Oldest commits will be on the left when rendered left-to-right
+  return bars;
 }
 
 /**
