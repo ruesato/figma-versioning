@@ -239,7 +239,7 @@ function createHistogramBar(
   barContainer.resize(config.barWidth, config.maxHeight);
   barContainer.itemSpacing = 0;
   barContainer.fills = [];
-  barContainer.counterAxisAlignItems = 'MAX';
+  barContainer.counterAxisAlignItems = 'MIN';
 
   // Determine dominant color
   const isFeedbackDominant = bar.feedbackCount > bar.nodesDelta;
