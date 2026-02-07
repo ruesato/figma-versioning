@@ -237,12 +237,22 @@ function createCommentItem(
  * Create comments section with uppercase header and orange badge
  */
 function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
-  if (commit.comments.length === 0) {
-    console.log(`[Changelog] No comments for version ${commit.version}`);
+  if (!commit.comments || !Array.isArray(commit.comments) || commit.comments.length === 0) {
+    console.log(`[Changelog] No comments for version ${commit.version}`, {
+      hasComments: !!commit.comments,
+      isArray: Array.isArray(commit.comments),
+      length: commit.comments?.length
+    });
     return null;
   }
 
-  console.log(`[Changelog] Rendering ${commit.comments.length} comments for version ${commit.version}`);
+  console.log(`[Changelog] Rendering ${commit.comments.length} comments for version ${commit.version}`, {
+    comments: commit.comments.map(c => ({
+      id: c.timestamp.getTime(),
+      author: c.author.name,
+      textPreview: c.text.substring(0, 30)
+    }))
+  });
 
   const commentsFrame = figma.createFrame();
   commentsFrame.name = 'Comments';

@@ -696,6 +696,16 @@ export default function () {
         metrics
       };
 
+      console.log(`[Version] Created commit object with ${comments.length} comments`, {
+        commitId: commit.id,
+        commentCount: comments.length,
+        commentDetails: comments.map(c => ({
+          author: c.author.name,
+          textPreview: c.text.substring(0, 30),
+          timestamp: c.timestamp.toISOString()
+        }))
+      });
+
       // Save commit data
       await saveCommit(commit);
 
