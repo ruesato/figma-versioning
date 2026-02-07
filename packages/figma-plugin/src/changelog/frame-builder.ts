@@ -169,8 +169,9 @@ function createSectionHeader(
 function createCommentItem(
   comment: import('@figma-versioning/core').Comment,
   colors: ReturnType<typeof getThemeColors>,
-  isReply: boolean = false
+  parentCommentText?: string
 ): FrameNode {
+  const isReply = !!parentCommentText;
   const commentFrame = figma.createFrame();
   commentFrame.name = isReply ? 'Reply Item' : 'Comment Item';
   commentFrame.layoutMode = 'VERTICAL';
@@ -182,6 +183,24 @@ function createCommentItem(
   commentFrame.fills = [];
   if (isReply) {
     commentFrame.paddingLeft = 16;
+  }
+
+  // Reply context (if this is a reply)
+  if (isReply && parentCommentText) {
+    // Truncate parent comment to one line (approximately 60 characters)
+    const truncatedParent = parentCommentText.length > 60
+      ? parentCommentText.substring(0, 60) + '...'
+      : parentCommentText;
+
+    const replyToText = createText(
+      `Reply to: "${truncatedParent}"`,
+      10,
+      'Regular',
+      colors.textMuted
+    );
+    replyToText.textAutoResize = 'HEIGHT';
+    replyToText.resize(frameWidth, replyToText.height);
+    commentFrame.appendChild(replyToText);
   }
 
   // Author and timestamp
@@ -248,9 +267,10 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
 
   console.log(`[Changelog] Rendering ${commit.comments.length} comments for version ${commit.version}`, {
     comments: commit.comments.map(c => ({
-      id: c.timestamp.getTime(),
+      id: c.id,
       author: c.author.name,
-      textPreview: c.text.substring(0, 30)
+      textPreview: c.text.substring(0, 30),
+      isReply: !!c.parentId
     }))
   });
 
@@ -269,17 +289,40 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
   const sectionHeader = createSectionHeader('Comments', commit.comments.length, colors.commentBadge, colors);
   commentsFrame.appendChild(sectionHeader);
 
-  // Add individual comment items with threading support
+  // Organize comments into threads
+  // Create a map of comment ID to comment for quick lookup
+  const commentMap = new Map<string, import('@figma-versioning/core').Comment>();
   for (const comment of commit.comments) {
-    const commentItem = createCommentItem(comment, colors, false);
+    commentMap.set(comment.id, comment);
+  }
+
+  // Separate root comments and replies
+  const rootComments: import('@figma-versioning/core').Comment[] = [];
+  const replies = new Map<string, import('@figma-versioning/core').Comment[]>();
+
+  for (const comment of commit.comments) {
+    if (comment.parentId) {
+      // This is a reply
+      const repliesArray = replies.get(comment.parentId) || [];
+      repliesArray.push(comment);
+      replies.set(comment.parentId, repliesArray);
+    } else {
+      // This is a root comment
+      rootComments.push(comment);
+    }
+  }
+
+  // Render root comments followed by their replies
+  for (const rootComment of rootComments) {
+    // Render root comment
+    const commentItem = createCommentItem(rootComment, colors);
     commentsFrame.appendChild(commentItem);
 
-    // Add replies if they exist (threaded comments)
-    if ('replies' in comment && Array.isArray(comment.replies)) {
-      for (const reply of comment.replies as import('@figma-versioning/core').Comment[]) {
-        const replyItem = createCommentItem(reply, colors, true);
-        commentsFrame.appendChild(replyItem);
-      }
+    // Render replies to this root comment
+    const commentReplies = replies.get(rootComment.id) || [];
+    for (const reply of commentReplies) {
+      const replyItem = createCommentItem(reply, colors, rootComment.text);
+      commentsFrame.appendChild(replyItem);
     }
   }
 

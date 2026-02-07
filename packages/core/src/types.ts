@@ -24,6 +24,8 @@ export interface Author {
  * Figma comment captured at commit time
  */
 export interface Comment {
+  /** Unique comment ID from Figma API */
+  id: string;
   /** Comment author */
   author: Author;
   /** Comment creation timestamp */
@@ -32,6 +34,8 @@ export interface Comment {
   text: string;
   /** Associated Figma node ID if comment is pinned to a specific node */
   nodeId?: string;
+  /** Parent comment ID if this is a reply (undefined for root comments) */
+  parentId?: string;
 }
 
 /**

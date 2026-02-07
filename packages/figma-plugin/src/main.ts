@@ -161,13 +161,15 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
 
     // Transform Figma comments to our format
     const comments: Comment[] = rawComments.map((comment: any) => ({
+      id: comment.id,
       author: {
         name: comment.user?.handle || 'Unknown',
         email: comment.user?.email
       },
       timestamp: new Date(comment.created_at),
       text: comment.message,
-      nodeId: comment.client_meta?.node_id
+      nodeId: comment.client_meta?.node_id,
+      parentId: comment.parent_id
     }));
 
     console.log(`[Comments] Successfully transformed ${comments.length} comments`);
@@ -240,10 +242,12 @@ async function collectAnnotations(): Promise<Annotation[]> {
 
 /**
  * Generate a fingerprint for a comment to detect duplicates across versions
- * Uses content-based deduplication to avoid clock skew issues between client and Figma server
+ * Uses comment ID as primary key (most reliable), with content fallback
  */
 function commentFingerprint(c: Comment): string {
-  return `${c.author.name}|${c.text}|${c.nodeId || ''}`;
+  // Use comment ID as the primary fingerprint (most reliable)
+  // Fall back to content-based fingerprint if ID is missing (legacy comments)
+  return c.id || `${c.author.name}|${c.text}|${c.nodeId || ''}`;
 }
 
 /**
