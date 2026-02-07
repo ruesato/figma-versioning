@@ -55,7 +55,7 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   header.layoutMode = 'VERTICAL';
   header.primaryAxisSizingMode = 'AUTO';
   header.counterAxisSizingMode = 'AUTO';
-  header.resize(FRAME_WIDTH, 1); // Height is auto-sized by children
+  header.resize(FRAME_WIDTH, header.height);
   header.itemSpacing = 8;
   header.paddingTop = PADDING;
   header.paddingBottom = PADDING;
@@ -497,7 +497,7 @@ export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode>
   container.layoutMode = 'VERTICAL';
   container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'AUTO';
-  container.resize(FRAME_WIDTH, 100);
+  container.resize(FRAME_WIDTH, container.height);
   container.itemSpacing = SECTION_SPACING;
   container.paddingBottom = PADDING;
   container.fills = [{ type: 'SOLID', color: colors.background }];
