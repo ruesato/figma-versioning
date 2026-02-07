@@ -239,45 +239,40 @@ async function collectAnnotations(): Promise<Annotation[]> {
 }
 
 /**
- * Filter comments to only those created after the previous commit timestamp
+ * Generate a fingerprint for a comment to detect duplicates across versions
+ * Uses content-based deduplication to avoid clock skew issues between client and Figma server
  */
-function filterNewComments(current: Comment[], previousCommitTimestamp?: Date): Comment[] {
-  if (!previousCommitTimestamp) {
-    console.log('[Comments] No previous timestamp, returning all comments');
+function commentFingerprint(c: Comment): string {
+  return `${c.author.name}|${c.text}|${c.nodeId || ''}`;
+}
+
+/**
+ * Filter comments to only those not seen in previous commits
+ * Uses fingerprint-based deduplication (matching author|text|nodeId) instead of timestamps
+ * to avoid clock skew issues between client (new Date()) and Figma server (comment created_at)
+ */
+function filterNewComments(current: Comment[], allPrevious: Comment[]): Comment[] {
+  if (allPrevious.length === 0) {
+    console.log('[Comments] No previous comments, returning all comments');
     return current;
   }
 
-  const previousTime = previousCommitTimestamp.getTime();
-  const currentTime = Date.now();
-
   console.log('[Comments] =================================');
-  console.log('[Comments] Previous commit timestamp:', previousCommitTimestamp.toISOString());
-  console.log('[Comments] Current timestamp (now):', currentTime);
-  console.log('[Comments] Comments to filter:', current.length);
+  console.log('[Comments] Filtering comments using fingerprint-based deduplication');
+  console.log('[Comments] Current comments:', current.length);
+  console.log('[Comments] Previous comments:', allPrevious.length);
 
+  const previousFingerprints = new Set(allPrevious.map(commentFingerprint));
   const newComments = current.filter(c => {
-    const timestamp = c.timestamp?.getTime();
-    console.log('[Comments] Raw timestamp:', typeof timestamp, timestamp);
-
-    if (typeof timestamp !== 'number' || isNaN(timestamp)) {
-      console.warn('[Comments] Skipping comment with invalid timestamp:', c.text.substring(0, 30));
-      return false;
-    }
-
-    const commentDate = c.timestamp;
-    const isNew = timestamp > previousTime;
+    const fingerprint = commentFingerprint(c);
+    const isNew = !previousFingerprints.has(fingerprint);
 
     if (isNew) {
-      console.log(`[Comments] Comment: "${c.text.substring(0, 30)}..."`);
-      console.log(`[Comments]   Created at: ${commentDate.toISOString()}`);
-      console.log(`[Comments]   Previous commit: ${previousCommitTimestamp.toISOString()}`);
-      console.log(`[Comments]   Is new: ${isNew}`);
+      console.log(`[Comments] NEW comment: "${c.text.substring(0, 30)}..." by ${c.author.name}`);
     } else {
-      console.log(`[Comments] Comment: "${c.text.substring(0, 30)}..."`);
-      console.log(`[Comments]   Created at: ${commentDate.toISOString()}`);
-      console.log(`[Comments]   Previous commit: ${previousCommitTimestamp.toISOString()}`);
-      console.log(`[Comments]   Is new: false`);
+      console.log(`[Comments] Duplicate comment (skipping): "${c.text.substring(0, 30)}..." by ${c.author.name}`);
     }
+
     return isNew;
   });
 
@@ -666,11 +661,8 @@ export default function () {
         version = await calculateNextSemanticVersion(incrementType || 'patch');
       }
 
-      // Load previous commit to filter out already-seen comments and annotations
+      // Load previous commits to filter out already-seen comments and annotations
       const existingCommits = await loadCommits();
-      const previousCommit = existingCommits.length > 0 ? existingCommits[0] : null;
-
-      console.log(`[Version] Previous commit timestamp:`, previousCommit?.timestamp?.toISOString());
 
       // Fetch comments (if PAT is available), filtered to only new ones
       const commentsResult = await fetchComments();
@@ -678,7 +670,10 @@ export default function () {
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
       }
-      const comments = filterNewComments(allComments, previousCommit?.timestamp);
+
+      // Filter comments using fingerprint-based deduplication against ALL previous comments
+      const allPreviousComments = existingCommits.flatMap(commit => commit.comments || []);
+      const comments = filterNewComments(allComments, allPreviousComments);
       console.log(`[Version] Comments: ${allComments.length} total, ${comments.length} new for version ${version}`);
 
       // Collect annotations, filtered to only new or changed ones
