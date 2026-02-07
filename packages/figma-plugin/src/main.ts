@@ -254,6 +254,8 @@ function filterNewComments(current: Comment[], previousCommitTimestamp?: Date): 
   }
 
   console.log('[Comments] Filtering comments after:', previousCommitTimestamp.toISOString());
+  console.log('[Comments] Current timestamp (now):', new Date().toISOString());
+  console.log('[Comments] Comments to filter:', current.length);
 
   const newComments = current.filter(c => {
     // Validate comment timestamp
@@ -265,12 +267,16 @@ function filterNewComments(current: Comment[], previousCommitTimestamp?: Date): 
 
     const previousTime = previousCommitTimestamp.getTime();
     const isNew = commentTime > previousTime;
-    if (isNew) {
-      console.log(`[Comments] Found new comment: ${c.text.substring(0, 30)}... (${c.timestamp.toISOString()})`);
-    }
+    
+    console.log(`[Comments] Comment: "${c.text.substring(0, 30)}..."`);
+    console.log(`[Comments]   Created at: ${c.timestamp.toISOString()}`);
+    console.log(`[Comments]   Previous commit: ${previousCommitTimestamp.toISOString()}`);
+    console.log(`[Comments]   Is new: ${isNew}`);
+    
     return isNew;
   });
 
+  console.log(`[Comments] Filtered to ${newComments.length} new comments`);
   return newComments;
 }
 
@@ -661,6 +667,8 @@ export default function () {
       const existingCommits = await loadCommits();
       const previousCommit = existingCommits.length > 0 ? existingCommits[0] : null;
 
+      console.log(`[Version] Previous commit timestamp:`, previousCommit?.timestamp?.toISOString());
+
       // Fetch comments (if PAT is available), filtered to only new ones
       const commentsResult = await fetchComments();
       const allComments = commentsResult.success ? commentsResult.comments || [] : [];
@@ -682,6 +690,9 @@ export default function () {
       console.log(`[Version] Feedback count: ${feedbackCount} (${comments.length} comments, ${annotations.length} annotations)`);
 
       // Create commit object
+      const now = new Date();
+      console.log(`[Version] Creating new commit at:`, now.toISOString());
+
       const commit: Commit = {
         id: `commit_${Date.now()}`,
         version,
@@ -690,7 +701,7 @@ export default function () {
         author: {
           name: figma.currentUser?.name || 'Unknown'
         },
-        timestamp: new Date(),
+        timestamp: now,
         comments,
         annotations,
         metrics
