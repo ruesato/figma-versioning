@@ -247,42 +247,45 @@ function filterNewComments(current: Comment[], previousCommitTimestamp?: Date): 
     return current;
   }
 
-  // Validate previous timestamp
-  if (isNaN(previousCommitTimestamp.getTime())) {
-    console.warn('[Comments] Invalid previous commit timestamp, returning all comments');
-    return current;
-  }
+  const previousTime = previousCommitTimestamp.getTime();
+  const currentTime = Date.now();
 
-  console.log('[Comments] Filtering comments after:', previousCommitTimestamp.toISOString());
-  console.log('[Comments] Current timestamp (now):', new Date().toISOString());
+  console.log('[Comments] =================================');
+  console.log('[Comments] Previous commit timestamp:', previousCommitTimestamp.toISOString());
+  console.log('[Comments] Current timestamp (now):', currentTime);
   console.log('[Comments] Comments to filter:', current.length);
 
   const newComments = current.filter(c => {
-    // Validate comment timestamp
-    const commentTime = c.timestamp?.getTime();
-    if (isNaN(commentTime)) {
+    const timestamp = c.timestamp?.getTime();
+    console.log('[Comments] Raw timestamp:', typeof timestamp, timestamp);
+
+    if (typeof timestamp !== 'number' || isNaN(timestamp)) {
       console.warn('[Comments] Skipping comment with invalid timestamp:', c.text.substring(0, 30));
       return false;
     }
 
-    const previousTime = previousCommitTimestamp.getTime();
-    const isNew = commentTime > previousTime;
-    
-    console.log(`[Comments] Comment: "${c.text.substring(0, 30)}..."`);
-    console.log(`[Comments]   Created at: ${c.timestamp.toISOString()}`);
-    console.log(`[Comments]   Previous commit: ${previousCommitTimestamp.toISOString()}`);
-    console.log(`[Comments]   Is new: ${isNew}`);
-    
+    const commentDate = c.timestamp;
+    const isNew = timestamp > previousTime;
+
+    if (isNew) {
+      console.log(`[Comments] Comment: "${c.text.substring(0, 30)}..."`);
+      console.log(`[Comments]   Created at: ${commentDate.toISOString()}`);
+      console.log(`[Comments]   Previous commit: ${previousCommitTimestamp.toISOString()}`);
+      console.log(`[Comments]   Is new: ${isNew}`);
+    } else {
+      console.log(`[Comments] Comment: "${c.text.substring(0, 30)}..."`);
+      console.log(`[Comments]   Created at: ${commentDate.toISOString()}`);
+      console.log(`[Comments]   Previous commit: ${previousCommitTimestamp.toISOString()}`);
+      console.log(`[Comments]   Is new: false`);
+    }
     return isNew;
   });
 
   console.log(`[Comments] Filtered to ${newComments.length} new comments`);
+  console.log('[Comments] =================================');
   return newComments;
 }
 
-/**
- * Generate a fingerprint for an annotation to detect duplicates across versions
- */
 function annotationFingerprint(a: Annotation): string {
   const propsStr = a.properties
     ? JSON.stringify(a.properties, Object.keys(a.properties).sort())
