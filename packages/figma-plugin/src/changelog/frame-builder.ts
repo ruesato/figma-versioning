@@ -226,23 +226,40 @@ function createCommentItem(
 
   // Node reference with click-to-navigate (if available)
   if (comment.nodeId) {
+    // Try to get the node name for better UX
+    let nodeDisplayName = comment.nodeId; // Fallback to ID
+    let nodeExists = true;
+
+    try {
+      const node = figma.getNodeById(comment.nodeId);
+      if (node && 'name' in node) {
+        nodeDisplayName = node.name;
+      }
+    } catch {
+      // Node may not exist anymore
+      nodeExists = false;
+      nodeDisplayName = 'Deleted layer';
+    }
+
     const nodeRefText = createText(
-      `On layer: ${comment.nodeId}`,
+      `On layer: ${nodeDisplayName}`,
       10,
       'Regular',
-      colors.accent
+      nodeExists ? colors.accent : colors.textSecondary
     );
-    nodeRefText.textDecoration = 'UNDERLINE';
-    nodeRefText.locked = false; // Allow interaction
+    nodeRefText.textDecoration = nodeExists ? 'UNDERLINE' : 'NONE';
+    nodeRefText.locked = !nodeExists; // Allow interaction only if node exists
 
-    // Add hyperlink to navigate to the node
-    try {
-      nodeRefText.hyperlink = { type: 'NODE', value: comment.nodeId };
-    } catch {
-      // Node may not exist anymore, fall back to non-interactive style
-      nodeRefText.fills = [{ type: 'SOLID', color: colors.textSecondary }];
-      nodeRefText.textDecoration = 'NONE';
-      nodeRefText.locked = true;
+    // Add hyperlink to navigate to the node (if it exists)
+    if (nodeExists) {
+      try {
+        nodeRefText.hyperlink = { type: 'NODE', value: comment.nodeId };
+      } catch {
+        // Hyperlink failed, update styling to non-interactive
+        nodeRefText.fills = [{ type: 'SOLID', color: colors.textSecondary }];
+        nodeRefText.textDecoration = 'NONE';
+        nodeRefText.locked = true;
+      }
     }
 
     commentFrame.appendChild(nodeRefText);
