@@ -54,8 +54,8 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   header.name = 'Header';
   header.layoutMode = 'VERTICAL';
   header.primaryAxisSizingMode = 'AUTO';
-  header.counterAxisSizingMode = 'FIXED';
-  header.resize(FRAME_WIDTH, 50);
+  header.counterAxisSizingMode = 'AUTO';
+  header.resize(FRAME_WIDTH, 1); // Height is auto-sized by children
   header.itemSpacing = 8;
   header.paddingTop = PADDING;
   header.paddingBottom = PADDING;
@@ -92,7 +92,7 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   // Title (prominent, bold)
   const titleText = createText(
     commit.title,
-    14,
+    16,
     'Bold',
     colors.text
   );
@@ -104,7 +104,7 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   if (commit.description && commit.description.trim().length > 0) {
     const descriptionText = createText(
       commit.description,
-      13,
+      14,
       'Regular',
       colors.textSecondary
     );

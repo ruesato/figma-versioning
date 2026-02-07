@@ -243,9 +243,35 @@ async function collectAnnotations(): Promise<Annotation[]> {
  */
 function filterNewComments(current: Comment[], previousCommitTimestamp?: Date): Comment[] {
   if (!previousCommitTimestamp) {
+    console.log('[Comments] No previous timestamp, returning all comments');
     return current;
   }
-  return current.filter(c => c.timestamp > previousCommitTimestamp);
+
+  // Validate previous timestamp
+  if (isNaN(previousCommitTimestamp.getTime())) {
+    console.warn('[Comments] Invalid previous commit timestamp, returning all comments');
+    return current;
+  }
+
+  console.log('[Comments] Filtering comments after:', previousCommitTimestamp.toISOString());
+
+  const newComments = current.filter(c => {
+    // Validate comment timestamp
+    const commentTime = c.timestamp?.getTime();
+    if (isNaN(commentTime)) {
+      console.warn('[Comments] Skipping comment with invalid timestamp:', c.text.substring(0, 30));
+      return false;
+    }
+
+    const previousTime = previousCommitTimestamp.getTime();
+    const isNew = commentTime > previousTime;
+    if (isNew) {
+      console.log(`[Comments] Found new comment: ${c.text.substring(0, 30)}... (${c.timestamp.toISOString()})`);
+    }
+    return isNew;
+  });
+
+  return newComments;
 }
 
 /**
@@ -351,12 +377,30 @@ async function saveChangelogMeta(meta: ChangelogMeta): Promise<void> {
 }
 
 /**
- * Migrate legacy commit format (message field) to new format (title/description)
+ * Migrate legacy commit format and ensure proper types
+ * - Converts 'message' field to 'title/description' format
+ * - Ensures timestamp is a Date object (JSON serialization converts to string)
  */
 function migrateLegacyCommit(commit: any): Commit {
+  // Ensure timestamp is a Date object (gets serialized to string in storage)
+  let timestamp: Date;
+  if (commit.timestamp instanceof Date) {
+    timestamp = commit.timestamp;
+  } else if (commit.timestamp) {
+    timestamp = new Date(commit.timestamp);
+    // Validate that the timestamp is valid
+    if (isNaN(timestamp.getTime())) {
+      console.warn(`[Migration] Invalid timestamp for commit ${commit.id}: ${commit.timestamp}, using current time`);
+      timestamp = new Date();
+    }
+  } else {
+    console.warn(`[Migration] Missing timestamp for commit ${commit.id}, using current time`);
+    timestamp = new Date();
+  }
+
   // If commit already has title field, it's in the new format
   if ('title' in commit) {
-    return commit as Commit;
+    return { ...commit, timestamp } as Commit;
   }
 
   // Legacy commit with 'message' field - migrate to new format
@@ -364,6 +408,7 @@ function migrateLegacyCommit(commit: any): Commit {
   const { message, ...rest } = commit;
   return {
     ...rest,
+    timestamp,
     title: message || 'Untitled',
     description: undefined
   } as Commit;
