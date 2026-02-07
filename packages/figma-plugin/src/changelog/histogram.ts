@@ -110,24 +110,31 @@ export function calculateHistogramData(
 }
 
 /**
- * Calculates the scale factor for histogram bars based on maximum value
+ * Calculates bar height using square root scale
  *
- * @param bars - Histogram bars to scale
+ * Square root scaling compresses large values while keeping small values visible.
+ * This makes it easier to compare commits with large disparities in activity.
+ *
+ * @param value - Value to scale
+ * @param maxValue - Maximum value in dataset
  * @param maxHeight - Maximum height in pixels
- * @returns Scale factor to multiply totalHeight by
+ * @param minHeight - Minimum height in pixels (ensures visibility)
+ * @returns Scaled height in pixels
  */
-export function calculateScale(bars: HistogramBar[], maxHeight: number): number {
-  if (bars.length === 0) {
-    return 1;
+export function calculateBarHeight(
+  value: number,
+  maxValue: number,
+  maxHeight: number,
+  minHeight: number
+): number {
+  if (maxValue === 0 || value === 0) {
+    return minHeight;
   }
 
-  const maxValue = Math.max(...bars.map((bar) => bar.totalHeight));
-
-  if (maxValue === 0) {
-    return 1;
-  }
-
-  return maxHeight / maxValue;
+  const sqrtValue = Math.sqrt(value);
+  const sqrtMax = Math.sqrt(maxValue);
+  const height = Math.round((sqrtValue / sqrtMax) * maxHeight);
+  return Math.max(height, minHeight);
 }
 
 /**
@@ -206,19 +213,23 @@ function createText(
 }
 
 /**
- * Create a single histogram bar with stacked layers
+ * Create a single histogram bar
+ *
+ * Uses square root scaling and displays a single color based on dominant value:
+ * - Blue if feedback count is dominant
+ * - Orange if nodes delta is dominant
  *
  * @param bar - Histogram bar data
  * @param colors - Histogram colors
  * @param config - Histogram configuration
- * @param scale - Scale factor for bar heights
- * @returns Frame node containing the stacked bar
+ * @param maxValue - Maximum totalHeight across all bars for scaling
+ * @returns Frame node containing the bar
  */
 function createHistogramBar(
   bar: HistogramBar,
   colors: HistogramColors,
   config: Required<HistogramConfig>,
-  scale: number
+  maxValue: number
 ): FrameNode {
   const barContainer = figma.createFrame();
   barContainer.name = `Bar: ${bar.version}`;
@@ -228,33 +239,31 @@ function createHistogramBar(
   barContainer.resize(config.barWidth, config.maxHeight);
   barContainer.itemSpacing = 0;
   barContainer.fills = [];
+  barContainer.counterAxisAlignItems = 'MAX';
 
-  // Calculate scaled heights
-  const feedbackHeight = Math.round(bar.feedbackCount * scale);
-  const nodesDeltaHeight = Math.round(bar.nodesDelta * scale);
+  // Determine dominant color
+  const isFeedbackDominant = bar.feedbackCount > bar.nodesDelta;
+  const barColor = isFeedbackDominant ? colors.feedback : colors.nodesDelta;
 
-  // Create nodes delta layer (orange) - appears on top visually
-  if (nodesDeltaHeight > 0) {
-    const nodesDeltaRect = figma.createRectangle();
-    nodesDeltaRect.name = 'Nodes Delta';
-    nodesDeltaRect.resize(config.barWidth, nodesDeltaHeight);
-    nodesDeltaRect.fills = [{ type: 'SOLID', color: colors.nodesDelta }];
-    barContainer.appendChild(nodesDeltaRect);
-  }
+  // Calculate height using square root scale
+  const minHeight = 4;
+  const barHeight = calculateBarHeight(bar.totalHeight, maxValue, config.maxHeight, minHeight);
 
-  // Create feedback layer (blue) - appears below nodes delta
-  if (feedbackHeight > 0) {
-    const feedbackRect = figma.createRectangle();
-    feedbackRect.name = 'Feedback';
-    feedbackRect.resize(config.barWidth, feedbackHeight);
-    feedbackRect.fills = [{ type: 'SOLID', color: colors.feedback }];
-    barContainer.appendChild(feedbackRect);
-  }
+  // Create bar rectangle
+  const barRect = figma.createRectangle();
+  barRect.name = 'Activity Bar';
+  barRect.resize(config.barWidth, barHeight);
+  barRect.fills = [{ type: 'SOLID', color: barColor }];
+  barRect.cornerRadius = 2;
+  barContainer.appendChild(barRect);
 
   // Store metadata for interactivity
   barContainer.setPluginData('commitId', bar.commitId);
   barContainer.setPluginData('version', bar.version);
   barContainer.setPluginData('title', bar.title);
+  barContainer.setPluginData('feedbackCount', String(bar.feedbackCount));
+  barContainer.setPluginData('nodesDelta', String(bar.nodesDelta));
+  barContainer.setPluginData('isFeedbackDominant', String(isFeedbackDominant));
   if (bar.changelogFrameId) {
     barContainer.setPluginData('changelogFrameId', bar.changelogFrameId);
   }
@@ -322,7 +331,7 @@ function createLegend(colors: HistogramColors): FrameNode {
 }
 
 /**
- * Create the complete histogram frame with bars and legend
+ * Create the complete histogram frame with bars, legend, and caption
  *
  * @param bars - Histogram bars to render
  * @param colors - Histogram colors
@@ -343,7 +352,7 @@ function createHistogramFrame(
   histogramFrame.fills = [];
 
   // Add title
-  const title = createText('Activity History', 14, 'Bold', colors.text);
+  const title = createText('Recent activity', 14, 'Bold', colors.text);
   histogramFrame.appendChild(title);
 
   // Add legend if enabled
@@ -361,16 +370,25 @@ function createHistogramFrame(
   barsContainer.itemSpacing = config.barGap;
   barsContainer.fills = [];
 
-  // Calculate scale
-  const scale = calculateScale(bars, config.maxHeight);
+  // Calculate maximum totalHeight for scaling
+  const maxValue = Math.max(...bars.map((bar) => bar.totalHeight), 1);
 
-  // Create bars (already in newest-first order from calculateHistogramData)
+  // Create bars (already in chronological order from calculateHistogramData)
   for (const bar of bars) {
-    const barFrame = createHistogramBar(bar, colors, config, scale);
+    const barFrame = createHistogramBar(bar, colors, config, maxValue);
     barsContainer.appendChild(barFrame);
   }
 
   histogramFrame.appendChild(barsContainer);
+
+  // Add caption
+  const caption = createText(
+    `Last ${bars.length} commits. Select a bar to view its changelog entry.`,
+    12,
+    'Regular',
+    colors.textSecondary
+  );
+  histogramFrame.appendChild(caption);
 
   return histogramFrame;
 }
@@ -456,7 +474,6 @@ export function navigateFromHistogramBar(): boolean {
 
   // Check if the selected node or its parent is a histogram bar
   let barNode: SceneNode | null = selectedNode;
-  let isHistogramBar = false;
 
   // Check up to 2 levels up (bar container or its children)
   for (let i = 0; i < 3 && barNode; i++) {
@@ -466,8 +483,6 @@ export function navigateFromHistogramBar(): boolean {
       const changelogFrameId = frameNode.getPluginData('changelogFrameId');
 
       if (commitId) {
-        isHistogramBar = true;
-
         // If we have a changelog frame ID, navigate to it
         if (changelogFrameId) {
           const changelogFrame = figma.getNodeById(changelogFrameId);

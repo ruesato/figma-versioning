@@ -1,7 +1,7 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
 import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta } from '@figma-versioning/core';
-import { renderChangelogEntry } from './changelog';
+import { renderChangelogEntry, setupHistogramInteractivity } from './changelog';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
@@ -512,6 +512,9 @@ export default function () {
   // Cache file key at init — requires enablePrivatePluginApi in manifest
   cachedFileKey = getFileKey();
   console.log(`[Init] File key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null'}`);
+
+  // Setup histogram interactivity for navigation
+  setupHistogramInteractivity();
 
   // Handle PAT status check
   on('CHECK_PAT', async function () {

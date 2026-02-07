@@ -20,7 +20,7 @@ export { createCommitEntryFrame } from './frame-builder';
 // Histogram exports
 export {
   calculateHistogramData,
-  calculateScale,
+  calculateBarHeight,
   formatBarTooltip,
   getHistogramColors,
   renderHistogramOnChangelogPage,
