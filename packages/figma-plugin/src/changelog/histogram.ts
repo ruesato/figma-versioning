@@ -370,6 +370,8 @@ function createHistogramFrame(
   barsContainer.counterAxisSizingMode = 'AUTO';
   barsContainer.itemSpacing = config.barGap;
   barsContainer.fills = [];
+  barsContainer.primaryAxisAlignItems = 'MIN';
+  barsContainer.counterAxisAlignItems = 'MIN';
 
   // Calculate maximum totalHeight for scaling
   const maxValue = Math.max(...bars.map((bar) => bar.totalHeight), 1);
