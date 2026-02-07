@@ -37,7 +37,7 @@ interface TooltipData {
 /**
  * Calculate histogram bar data from commits
  */
-function calculateHistogramBars(commits: Commit[], maxBars: number = 50): HistogramBar[] {
+function calculateHistogramBars(commits: Commit[], maxBars: number = 100): HistogramBar[] {
   if (commits.length === 0) {
     return [];
   }
@@ -127,7 +127,7 @@ export function HistogramPanel() {
     console.log('[HistogramPanel] useEffect running, emitting GET_RECENT_COMMITS');
 
     // Request commits from main thread
-    emit('GET_RECENT_COMMITS', { maxCommits: 50 });
+    emit('GET_RECENT_COMMITS', { maxCommits: 100 });
 
     const unsubscribe = on('RECENT_COMMITS', function (data: { commits: Commit[] }) {
       console.log('[HistogramPanel] Received RECENT_COMMITS:', data.commits.length, 'commits');

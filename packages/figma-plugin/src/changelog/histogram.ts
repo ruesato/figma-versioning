@@ -35,7 +35,7 @@ export interface HistogramBar {
  * Configuration for histogram rendering
  */
 export interface HistogramConfig {
-  /** Maximum number of bars to render (default: 50) */
+  /** Maximum number of bars to render (default: 100) */
   maxBars?: number;
   /** Bar width in pixels (default: 8) */
   barWidth?: number;
@@ -68,7 +68,7 @@ export function calculateHistogramData(
     return [];
   }
 
-  const maxBars = config?.maxBars ?? 50;
+  const maxBars = config?.maxBars ?? 100;
 
   // Sort commits chronologically (oldest first) for delta calculation
   const sortedCommits = [...commits].sort(
@@ -415,7 +415,7 @@ export async function renderHistogramOnChangelogPage(
 
   // Set default config
   const fullConfig: Required<HistogramConfig> = {
-    maxBars: config?.maxBars ?? 50,
+    maxBars: config?.maxBars ?? 100,
     barWidth: config?.barWidth ?? 8,
     barGap: config?.barGap ?? 4,
     maxHeight: config?.maxHeight ?? 100,
