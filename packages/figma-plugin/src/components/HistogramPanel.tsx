@@ -31,6 +31,7 @@ interface TooltipData {
   nodesDelta: number;
   x: number;
   y: number;
+  flipVertical: boolean;
 }
 
 /**
@@ -145,13 +146,36 @@ export function HistogramPanel() {
 
   function handleBarHover(bar: HistogramBar, event: MouseEvent) {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const barCenterX = rect.left + rect.width / 2;
+    const barTopY = rect.top - 10;
+
+    const TOOLTIP_WIDTH = 200;
+    const TOOLTIP_HEIGHT = 100;
+    const PADDING = 10;
+
+    let x = barCenterX;
+    let y = barTopY;
+    let flipVertical = false;
+
+    if (barCenterX - TOOLTIP_WIDTH / 2 < PADDING) {
+      x = PADDING + TOOLTIP_WIDTH / 2;
+    } else if (barCenterX + TOOLTIP_WIDTH / 2 > window.innerWidth - PADDING) {
+      x = window.innerWidth - PADDING - TOOLTIP_WIDTH / 2;
+    }
+
+    if (barTopY - TOOLTIP_HEIGHT < PADDING) {
+      y = barTopY + TOOLTIP_HEIGHT;
+      flipVertical = true;
+    }
+
     setTooltip({
       version: bar.version,
       title: bar.title,
       feedbackCount: bar.feedbackCount,
       nodesDelta: bar.nodesDelta,
-      x: rect.left + rect.width / 2,
-      y: rect.top - 10,
+      x,
+      y,
+      flipVertical,
     });
   }
 
@@ -280,8 +304,8 @@ export function HistogramPanel() {
           style={{
             position: 'fixed',
             left: `${tooltip.x}px`,
-            top: `${tooltip.y - 10}px`,
-            transform: 'translate(-50%, -100%)',
+            top: `${tooltip.y}px`,
+            transform: tooltip.flipVertical ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
             backgroundColor: '#1a1a1a',
             color: 'white',
             fontSize: '12px',
