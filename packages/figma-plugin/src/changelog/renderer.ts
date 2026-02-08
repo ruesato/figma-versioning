@@ -153,16 +153,16 @@ export async function rebuildChangelog(
   // Clear existing container
   clearChangelogContainer();
 
-  // Sort commits chronologically (oldest first) so we can render in order
-  // This ensures newest ends up at index 0 when we insert
+  // Sort commits reverse chronologically (newest first)
+  // Then append each one so newest ends up at index 0 (leftmost)
   const sortedCommits = [...commits].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
   // Map to store new frame IDs
   const frameIdMap: Record<string, string> = {};
 
-  // Render each commit oldest to newest
+  // Render each commit newest to oldest, appending each
   for (let i = 0; i < sortedCommits.length; i++) {
     const commit = sortedCommits[i];
 
@@ -180,9 +180,8 @@ export async function rebuildChangelog(
       // Unlock container temporarily to add entry
       container.locked = false;
 
-      // Insert at start (index 0) for reverse chronological order
-      // Since we're iterating oldest to newest, the newest will end up at index 0
-      container.insertChild(0, entryFrame);
+      // Append to end (newest first in array, so newest ends at leftmost position)
+      container.appendChild(entryFrame);
 
       // Re-lock the container
       container.locked = true;
