@@ -175,18 +175,35 @@ export function findContainerFrame(): FrameNode | null {
  * This clears all rendered changelog entries from the canvas
  */
 export function clearChangelogContainer(): void {
-  const container = findContainerFrame();
-  if (container) {
-    // Unlock container before removing
-    container.locked = false;
+  const page = getOrCreateChangelogPage();
 
-    // Remove all children first
-    while (container.children.length > 0) {
-      container.children[0].remove();
+  // Find and remove ALL containers with the matching name (in case of duplicates)
+  const containersToRemove: SceneNode[] = [];
+  for (const node of page.children) {
+    if (node.type === 'FRAME' && node.name === CONTAINER_NAME) {
+      containersToRemove.push(node);
     }
+  }
 
-    // Then remove the container itself
-    container.remove();
+  console.log(`[Rebuild] Found ${containersToRemove.length} container(s) to remove`);
+
+  for (const container of containersToRemove) {
+    if (container.type === 'FRAME') {
+      // Unlock container before removing
+      container.locked = false;
+
+      // Count children
+      const childCount = container.children.length;
+      console.log(`[Rebuild] Removing container with ${childCount} children`);
+
+      // Remove all children first
+      while (container.children.length > 0) {
+        container.children[0].remove();
+      }
+
+      // Then remove the container itself
+      container.remove();
+    }
   }
 }
 
@@ -209,6 +226,7 @@ export async function rebuildChangelog(
   }
 
   console.log(`[Rebuild] Starting rebuild of ${commits.length} commits`);
+  console.log(`[Rebuild] Commit versions:`, commits.map(c => c.version).join(', '));
 
   // Clear existing container
   clearChangelogContainer();
@@ -223,6 +241,8 @@ export async function rebuildChangelog(
     // If versions are equal (shouldn't happen), fall back to timestamp
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
+
+  console.log(`[Rebuild] Sorted versions:`, sortedCommits.map(c => c.version).join(', '));
 
   // Map to store new frame IDs
   const frameIdMap: Record<string, string> = {};

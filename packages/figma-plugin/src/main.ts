@@ -777,12 +777,28 @@ export default function () {
   once('REBUILD_CHANGELOG', async function () {
     try {
       // Load all commits from storage
-      const commits = await loadCommits();
+      const allCommits = await loadCommits();
 
-      if (commits.length === 0) {
+      if (allCommits.length === 0) {
         figma.notify('No commits found to rebuild', { timeout: 2000 });
         emit('CHANGELOG_REBUILT', { success: false, error: 'No commits found' });
         return;
+      }
+
+      // Deduplicate commits by ID (in case of storage corruption)
+      const seenIds = new Set<string>();
+      const commits: Commit[] = [];
+      for (const commit of allCommits) {
+        if (!seenIds.has(commit.id)) {
+          seenIds.add(commit.id);
+          commits.push(commit);
+        } else {
+          console.warn(`[Rebuild] Found duplicate commit ID: ${commit.id} (${commit.version})`);
+        }
+      }
+
+      if (commits.length !== allCommits.length) {
+        console.log(`[Rebuild] Deduplicated ${allCommits.length} commits to ${commits.length} unique commits`);
       }
 
       console.log(`[Rebuild] Starting rebuild of ${commits.length} commits`);
@@ -813,6 +829,13 @@ export default function () {
       // Save each chunk
       for (let i = 0; i < chunks.length; i++) {
         await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, chunks[i]);
+      }
+
+      // Clean up any orphaned chunks beyond the new chunk count
+      const oldMeta = await getChangelogMeta();
+      for (let i = chunks.length; i < oldMeta.chunkCount; i++) {
+        await figma.clientStorage.deleteAsync(`${COMMIT_CHUNK_PREFIX}${i}`);
+        console.log(`[Rebuild] Cleaned up orphaned chunk ${i}`);
       }
 
       // Update metadata
