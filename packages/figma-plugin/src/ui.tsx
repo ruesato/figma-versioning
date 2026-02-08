@@ -115,6 +115,7 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   const [newPat, setNewPat] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
@@ -132,6 +133,12 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   function handleRemovePat() {
     setIsRemoving(true);
     emit('REMOVE_PAT');
+  }
+
+  function handleRebuildChangelog() {
+    setMessage('');
+    setIsRebuilding(true);
+    emit('REBUILD_CHANGELOG');
   }
 
   useEffect(() => {
@@ -153,9 +160,21 @@ function SettingsView({ onBack }: { onBack: () => void }) {
       setMessageType('success');
     });
 
+    const unsubRebuild = on('CHANGELOG_REBUILT', function (data: { success: boolean; count?: number; error?: string }) {
+      setIsRebuilding(false);
+      if (data.success) {
+        setMessage(`Changelog rebuilt successfully with ${data.count} entries`);
+        setMessageType('success');
+      } else {
+        setMessage(data.error || 'Failed to rebuild changelog');
+        setMessageType('error');
+      }
+    });
+
     return () => {
       unsubValidation();
       unsubRemoval();
+      unsubRebuild();
     };
   }, []);
 
@@ -206,6 +225,19 @@ function SettingsView({ onBack }: { onBack: () => void }) {
       <VerticalSpace space="small" />
       <Button onClick={handleRemovePat} fullWidth secondary danger disabled={isUpdating || isRemoving}>
         {isRemoving ? 'Removing...' : 'Remove Token'}
+      </Button>
+
+      <VerticalSpace space="medium" />
+      <Text>
+        <Bold>Rebuild Changelog</Bold>
+      </Text>
+      <VerticalSpace space="small" />
+      <Muted>
+        Rebuild all changelog entries on the canvas from stored data. Use this if entries were accidentally deleted.
+      </Muted>
+      <VerticalSpace space="small" />
+      <Button onClick={handleRebuildChangelog} fullWidth disabled={isUpdating || isRemoving || isRebuilding}>
+        {isRebuilding ? 'Rebuilding...' : 'Rebuild Changelog'}
       </Button>
 
       {message && (
