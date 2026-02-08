@@ -10,6 +10,57 @@ import { getOrCreateChangelogPage } from './page-manager';
 import { createCommitEntryFrame } from './frame-builder';
 import { detectTheme, getThemeColors } from './theme';
 
+/**
+ * Compare two version strings for sorting
+ * Handles both semantic versions (1.2.3) and date-based versions (2026-01-15.1)
+ *
+ * @param a - First version string
+ * @param b - Second version string
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+function compareVersions(a: string, b: string): number {
+  // Try semantic version comparison first (e.g., "1.2.3")
+  const semverRegex = /^(\d+)\.(\d+)\.(\d+)$/;
+  const aMatch = a.match(semverRegex);
+  const bMatch = b.match(semverRegex);
+
+  if (aMatch && bMatch) {
+    // Both are semantic versions
+    const aMajor = parseInt(aMatch[1], 10);
+    const aMinor = parseInt(aMatch[2], 10);
+    const aPatch = parseInt(aMatch[3], 10);
+    const bMajor = parseInt(bMatch[1], 10);
+    const bMinor = parseInt(bMatch[2], 10);
+    const bPatch = parseInt(bMatch[3], 10);
+
+    if (aMajor !== bMajor) return aMajor - bMajor;
+    if (aMinor !== bMinor) return aMinor - bMinor;
+    return aPatch - bPatch;
+  }
+
+  // Try date-based version comparison (e.g., "2026-01-15" or "2026-01-15.1")
+  const dateRegex = /^(\d{4})-(\d{2})-(\d{2})(?:\.(\d+))?$/;
+  const aDateMatch = a.match(dateRegex);
+  const bDateMatch = b.match(dateRegex);
+
+  if (aDateMatch && bDateMatch) {
+    // Both are date-based versions
+    const aDate = new Date(parseInt(aDateMatch[1], 10), parseInt(aDateMatch[2], 10) - 1, parseInt(aDateMatch[3], 10));
+    const bDate = new Date(parseInt(bDateMatch[1], 10), parseInt(bDateMatch[2], 10) - 1, parseInt(bDateMatch[3], 10));
+    const dateDiff = aDate.getTime() - bDate.getTime();
+
+    if (dateDiff !== 0) return dateDiff;
+
+    // Same date, compare sequence numbers
+    const aSeq = aDateMatch[4] ? parseInt(aDateMatch[4], 10) : 0;
+    const bSeq = bDateMatch[4] ? parseInt(bDateMatch[4], 10) : 0;
+    return aSeq - bSeq;
+  }
+
+  // Fallback to string comparison
+  return a.localeCompare(b);
+}
+
 const CONTAINER_NAME = 'Changelog Entries';
 const CONTAINER_X = 100;
 const CONTAINER_Y = 400;
@@ -126,6 +177,15 @@ export function findContainerFrame(): FrameNode | null {
 export function clearChangelogContainer(): void {
   const container = findContainerFrame();
   if (container) {
+    // Unlock container before removing
+    container.locked = false;
+
+    // Remove all children first
+    while (container.children.length > 0) {
+      container.children[0].remove();
+    }
+
+    // Then remove the container itself
     container.remove();
   }
 }
@@ -153,11 +213,16 @@ export async function rebuildChangelog(
   // Clear existing container
   clearChangelogContainer();
 
-  // Sort commits reverse chronologically (newest first)
-  // Then append each one so newest ends up at index 0 (leftmost)
-  const sortedCommits = [...commits].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  // Sort commits by version (newest first)
+  // Use version comparison for proper semantic/date-based ordering
+  const sortedCommits = [...commits].sort((a, b) => {
+    // Compare versions in descending order (newest first)
+    const versionCompare = compareVersions(b.version, a.version);
+    if (versionCompare !== 0) return versionCompare;
+
+    // If versions are equal (shouldn't happen), fall back to timestamp
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
 
   // Map to store new frame IDs
   const frameIdMap: Record<string, string> = {};
