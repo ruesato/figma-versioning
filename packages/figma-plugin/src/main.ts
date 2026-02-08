@@ -773,6 +773,75 @@ export default function () {
     }
   });
 
+  // Handle changelog rebuild
+  once('REBUILD_CHANGELOG', async function () {
+    try {
+      // Load all commits from storage
+      const commits = await loadCommits();
+
+      if (commits.length === 0) {
+        figma.notify('No commits found to rebuild', { timeout: 2000 });
+        emit('CHANGELOG_REBUILT', { success: false, error: 'No commits found' });
+        return;
+      }
+
+      console.log(`[Rebuild] Starting rebuild of ${commits.length} commits`);
+
+      // Notify start
+      figma.notify(`Rebuilding changelog with ${commits.length} entries...`, { timeout: 1000 });
+
+      // Rebuild the changelog and get the new frame IDs
+      const { rebuildChangelog, renderHistogramOnChangelogPage } = await import('./changelog');
+      const frameIdMap = await rebuildChangelog(commits, (current, total) => {
+        console.log(`[Rebuild] Progress: ${current}/${total}`);
+      });
+
+      // Update each commit with its new changelogFrameId
+      const updatedCommits = commits.map(commit => ({
+        ...commit,
+        changelogFrameId: frameIdMap[commit.id] || commit.changelogFrameId
+      }));
+
+      // Re-save all commits with updated frame IDs
+      // We need to rebuild the chunks since we're updating all commits
+      const CHUNK_SIZE = 10;
+      const chunks: Commit[][] = [];
+      for (let i = 0; i < updatedCommits.length; i += CHUNK_SIZE) {
+        chunks.push(updatedCommits.slice(i, i + CHUNK_SIZE));
+      }
+
+      // Save each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, chunks[i]);
+      }
+
+      // Update metadata
+      const meta = await getChangelogMeta();
+      meta.chunkCount = chunks.length;
+      await saveChangelogMeta(meta);
+
+      console.log(`[Rebuild] Updated ${Object.keys(frameIdMap).length} commit frame IDs in storage`);
+
+      // Regenerate histogram
+      try {
+        await renderHistogramOnChangelogPage(updatedCommits);
+        console.log('[Rebuild] Histogram regenerated successfully');
+      } catch (histogramError) {
+        console.error('[Rebuild] Failed to regenerate histogram:', histogramError);
+        // Don't fail the entire rebuild for histogram errors
+      }
+
+      // Notify success
+      figma.notify(`Changelog rebuilt successfully with ${commits.length} entries`, { timeout: 3000 });
+      emit('CHANGELOG_REBUILT', { success: true, count: commits.length });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to rebuild changelog';
+      console.error('[Rebuild] Error:', error);
+      figma.notify(`Rebuild failed: ${errorMessage}`, { error: true, timeout: 3000 });
+      emit('CHANGELOG_REBUILT', { success: false, error: errorMessage });
+    }
+  });
+
   showUI({
     width: 640,
     height: 800

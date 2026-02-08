@@ -5,7 +5,13 @@
  */
 
 // Renderer exports
-export { renderChangelogEntry, getOrCreateContainerFrame } from './renderer';
+export {
+  renderChangelogEntry,
+  getOrCreateContainerFrame,
+  findContainerFrame,
+  clearChangelogContainer,
+  rebuildChangelog,
+} from './renderer';
 
 // Theme exports
 export { detectTheme, getThemeColors } from './theme';

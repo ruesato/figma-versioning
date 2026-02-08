@@ -101,3 +101,113 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
 
   return entryFrame;
 }
+
+/**
+ * Find and return the existing container frame if it exists
+ *
+ * @returns The container frame or null if not found
+ */
+export function findContainerFrame(): FrameNode | null {
+  const page = getOrCreateChangelogPage();
+
+  for (const node of page.children) {
+    if (node.type === 'FRAME' && node.name === CONTAINER_NAME) {
+      return node as FrameNode;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Remove the existing changelog entries container if it exists
+ * This clears all rendered changelog entries from the canvas
+ */
+export function clearChangelogContainer(): void {
+  const container = findContainerFrame();
+  if (container) {
+    container.remove();
+  }
+}
+
+/**
+ * Rebuild the entire changelog from stored commits
+ * Clears existing entries and re-renders all commits in chronological order
+ *
+ * @param commits - Array of commits to render (should be sorted newest first)
+ * @param onProgress - Optional callback for progress updates (current, total)
+ * @returns Object containing the rebuilt frame IDs mapped by commit ID
+ */
+export async function rebuildChangelog(
+  commits: Commit[],
+  onProgress?: (current: number, total: number) => void
+): Promise<Record<string, string>> {
+  // Handle empty commits
+  if (commits.length === 0) {
+    console.log('[Rebuild] No commits to rebuild');
+    return {};
+  }
+
+  console.log(`[Rebuild] Starting rebuild of ${commits.length} commits`);
+
+  // Clear existing container
+  clearChangelogContainer();
+
+  // Sort commits chronologically (oldest first) so we can render in order
+  // This ensures newest ends up at index 0 when we insert
+  const sortedCommits = [...commits].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+
+  // Map to store new frame IDs
+  const frameIdMap: Record<string, string> = {};
+
+  // Render each commit oldest to newest
+  for (let i = 0; i < sortedCommits.length; i++) {
+    const commit = sortedCommits[i];
+
+    if (onProgress) {
+      onProgress(i + 1, sortedCommits.length);
+    }
+
+    try {
+      // Create the commit entry frame
+      const entryFrame = await createCommitEntryFrame(commit);
+
+      // Get or create the container (will be created on first iteration)
+      const container = getOrCreateContainerFrame();
+
+      // Unlock container temporarily to add entry
+      container.locked = false;
+
+      // Insert at start (index 0) for reverse chronological order
+      // Since we're iterating oldest to newest, the newest will end up at index 0
+      container.insertChild(0, entryFrame);
+
+      // Re-lock the container
+      container.locked = true;
+
+      // Store the new frame ID
+      frameIdMap[commit.id] = entryFrame.id;
+
+      console.log(`[Rebuild] Rendered commit ${i + 1}/${sortedCommits.length}: ${commit.version}`);
+    } catch (error) {
+      console.error(`[Rebuild] Failed to render commit ${commit.id}:`, error);
+      // Continue with remaining commits even if one fails
+    }
+  }
+
+  // Navigate to the changelog page to show the rebuilt changelog
+  const changelogPage = getOrCreateChangelogPage();
+  figma.currentPage = changelogPage;
+
+  // Scroll to show the container
+  const container = findContainerFrame();
+  if (container) {
+    figma.viewport.scrollAndZoomIntoView([container]);
+  }
+
+  console.log(`[Rebuild] Completed rebuild of ${Object.keys(frameIdMap).length} commits`);
+
+  return frameIdMap;
+}
