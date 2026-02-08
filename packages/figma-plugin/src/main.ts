@@ -469,9 +469,10 @@ async function saveCommit(commit: Commit): Promise<void> {
     chunks.push(commits.slice(i, i + CHUNK_SIZE));
   }
 
-  // Save each chunk
+  // Save each chunk with explicit JSON serialization to handle Date objects
   for (let i = 0; i < chunks.length; i++) {
-    await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, chunks[i]);
+    const serialized = JSON.parse(JSON.stringify(chunks[i]));
+    await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
   }
 
   // Verify the commit was saved (read back and validate)
@@ -820,15 +821,17 @@ export default function () {
 
       // Re-save all commits with updated frame IDs
       // We need to rebuild the chunks since we're updating all commits
+      // Use JSON serialization to ensure dates are stored as ISO strings
       const CHUNK_SIZE = 10;
       const chunks: Commit[][] = [];
       for (let i = 0; i < updatedCommits.length; i += CHUNK_SIZE) {
         chunks.push(updatedCommits.slice(i, i + CHUNK_SIZE));
       }
 
-      // Save each chunk
+      // Save each chunk with explicit JSON serialization to handle Date objects
       for (let i = 0; i < chunks.length; i++) {
-        await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, chunks[i]);
+        const serialized = JSON.parse(JSON.stringify(chunks[i]));
+        await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
       }
 
       // Clean up any orphaned chunks beyond the new chunk count
