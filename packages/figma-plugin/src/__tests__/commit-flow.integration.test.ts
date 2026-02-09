@@ -294,7 +294,6 @@ describe('Comment Filtering Integration', () => {
 describe('Annotation Filtering Integration', () => {
   it('should filter duplicate annotations across commits', () => {
     const annotation1 = createMockAnnotation({
-      id: 'annotation-1',
       label: 'Same label',
       nodeId: 'node-1'
     });
@@ -302,13 +301,13 @@ describe('Annotation Filtering Integration', () => {
     const commit1Annotations = [annotation1];
     const commit2Annotations = [
       annotation1, // Duplicate
-      createMockAnnotation({ id: 'annotation-2', label: 'New label' })
+      createMockAnnotation({ label: 'New label' })
     ];
 
     const filtered = filterNewAnnotations(commit2Annotations, commit1Annotations);
 
     expect(filtered).toHaveLength(1);
-    expect(filtered[0].id).toBe('annotation-2');
+    expect(filtered[0]?.label).toBe('New label');
   });
 
   it('should filter annotations with same label and nodeId but different properties', () => {
@@ -428,7 +427,7 @@ describe('Full Commit Creation Flow', () => {
       createMockComment({ id: 'comment-1', text: 'First comment' })
     ];
     const v1Annotations = [
-      createMockAnnotation({ id: 'annotation-1', label: 'First annotation' })
+      createMockAnnotation({ label: 'First annotation' })
     ];
 
     const commit1 = createMockCommit({

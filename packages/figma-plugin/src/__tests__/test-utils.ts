@@ -122,10 +122,9 @@ export function createMockComment(overrides: Partial<Comment> = {}): Comment {
  */
 export function createMockAnnotation(overrides: Partial<Annotation> = {}): Annotation {
   return {
-    id: `annotation-${Date.now()}-${Math.random()}`,
     label: 'Test annotation',
     nodeId: 'node-1',
-    position: { x: 0, y: 0 },
+    isPinned: false,
     ...overrides
   };
 }

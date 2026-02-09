@@ -50,7 +50,7 @@ describe('Changelog Rebuild - Histogram Integration', () => {
     ];
 
     // Simulate frame ID map from rebuild
-    const frameIdMap = {
+    const frameIdMap: Record<string, string> = {
       'commit-1': 'frame-1',
       'commit-2': 'frame-2',
       'commit-3': 'frame-3',
@@ -209,7 +209,7 @@ describe('Frame ID Mapping Logic', () => {
     ];
 
     // Simulate rebuild returning new frame IDs
-    const frameIdMap = {
+    const frameIdMap: Record<string, string> = {
       'commit-1': 'new-frame-1',
       'commit-2': 'new-frame-2',
       'commit-3': 'new-frame-3',

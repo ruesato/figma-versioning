@@ -5,7 +5,19 @@ import {
   searchCommitsByDateRange,
   getRecentCommits
 } from './search';
-import type { Commit } from './types';
+import type { Commit, CommitMetrics } from './types';
+
+// Helper to create mock metrics
+function createMockMetrics(): CommitMetrics {
+  return {
+    totalNodes: 100,
+    frames: 10,
+    components: 5,
+    instances: 20,
+    textNodes: 15,
+    feedbackCount: 0
+  };
+}
 
 describe('extractKeywords', () => {
   it('should extract basic keywords', () => {
@@ -64,9 +76,10 @@ describe('searchCommits', () => {
       description: 'Created a new reusable button component',
       version: '1.0.0',
       timestamp: new Date('2024-01-15T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     },
     {
       id: 'commit-2',
@@ -74,46 +87,47 @@ describe('searchCommits', () => {
       description: 'Improved the navigation bar design',
       version: '1.1.0',
       timestamp: new Date('2024-01-16T10:00:00Z'),
-      author: { id: 'user-2', name: 'Bob', avatarUrl: '' },
+      author: { name: 'Bob' },
       comments: [
         {
           id: 'comment-1',
           text: 'Looks great with the new color scheme',
-          author: { id: 'user-3', name: 'Charlie', avatarUrl: '' },
+          author: { name: 'Charlie' },
           timestamp: new Date('2024-01-16T11:00:00Z')
         }
       ],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     },
     {
       id: 'commit-3',
       title: 'Fix form validation',
-      description: null,
+      description: undefined,
       version: '1.1.1',
       timestamp: new Date('2024-01-17T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
       annotations: [
         {
-          id: 'annotation-1',
           label: 'Input field validation',
           nodeId: 'node-1',
-          position: { x: 0, y: 0 }
+          isPinned: true
         }
-      ]
+      ],
+      metrics: createMockMetrics()
     }
   ];
 
   it('should find commits by title keywords', () => {
     const results = searchCommits(mockCommits, 'button');
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-1');
+    expect(results[0]?.id).toBe('commit-1');
   });
 
   it('should find commits by description keywords', () => {
     const results = searchCommits(mockCommits, 'navigation');
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-2');
+    expect(results[0]?.id).toBe('commit-2');
   });
 
   it('should find commits by version with minKeywordLength=1', () => {
@@ -128,35 +142,36 @@ describe('searchCommits', () => {
       {
         id: 'commit-4',
         title: 'Test commit',
-        description: null,
+        description: undefined,
         version: '10.5.2',
         timestamp: new Date('2024-01-18T10:00:00Z'),
-        author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+        author: { name: 'Alice' },
         comments: [],
-        annotations: []
+        annotations: [],
+        metrics: createMockMetrics()
       }
     ];
     const results = searchCommits(mockWithUniqueVersion, '10', { minKeywordLength: 2 });
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-4');
+    expect(results[0]?.id).toBe('commit-4');
   });
 
   it('should find commits by comment text', () => {
     const results = searchCommits(mockCommits, 'color scheme');
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-2');
+    expect(results[0]?.id).toBe('commit-2');
   });
 
   it('should find commits by comment author name', () => {
     const results = searchCommits(mockCommits, 'Charlie');
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-2');
+    expect(results[0]?.id).toBe('commit-2');
   });
 
   it('should find commits by annotation label', () => {
     const results = searchCommits(mockCommits, 'validation');
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-3');
+    expect(results[0]?.id).toBe('commit-3');
   });
 
   it('should return all commits for empty query', () => {
@@ -177,7 +192,7 @@ describe('searchCommits', () => {
   it('should be case insensitive by default', () => {
     const results = searchCommits(mockCommits, 'BUTTON');
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-1');
+    expect(results[0]?.id).toBe('commit-1');
   });
 
   it('should respect case sensitive option', () => {
@@ -198,32 +213,35 @@ describe('searchCommitsByDateRange', () => {
     {
       id: 'commit-1',
       title: 'Commit 1',
-      description: null,
+      description: undefined,
       version: '1.0.0',
       timestamp: new Date('2024-01-10T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     },
     {
       id: 'commit-2',
       title: 'Commit 2',
-      description: null,
+      description: undefined,
       version: '1.1.0',
       timestamp: new Date('2024-01-15T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     },
     {
       id: 'commit-3',
       title: 'Commit 3',
-      description: null,
+      description: undefined,
       version: '1.2.0',
       timestamp: new Date('2024-01-20T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     }
   ];
 
@@ -232,7 +250,7 @@ describe('searchCommitsByDateRange', () => {
     const endDate = new Date('2024-01-18T00:00:00Z');
     const results = searchCommitsByDateRange(mockCommits, startDate, endDate);
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-2');
+    expect(results[0]?.id).toBe('commit-2');
   });
 
   it('should include commits on start date', () => {
@@ -282,32 +300,35 @@ describe('getRecentCommits', () => {
     {
       id: 'commit-1',
       title: 'Old commit',
-      description: null,
+      description: undefined,
       version: '1.0.0',
       timestamp: new Date('2024-01-01T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     },
     {
       id: 'commit-2',
       title: 'Recent commit',
-      description: null,
+      description: undefined,
       version: '1.1.0',
       timestamp: new Date('2024-01-18T10:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     },
     {
       id: 'commit-3',
       title: 'Today commit',
-      description: null,
+      description: undefined,
       version: '1.2.0',
       timestamp: new Date('2024-01-20T09:00:00Z'),
-      author: { id: 'user-1', name: 'Alice', avatarUrl: '' },
+      author: { name: 'Alice' },
       comments: [],
-      annotations: []
+      annotations: [],
+      metrics: createMockMetrics()
     }
   ];
 
@@ -321,7 +342,7 @@ describe('getRecentCommits', () => {
   it('should include commits from today', () => {
     const results = getRecentCommits(mockCommits, 1);
     expect(results).toHaveLength(1);
-    expect(results[0].id).toBe('commit-3');
+    expect(results[0]?.id).toBe('commit-3');
   });
 
   it('should return empty array when no recent commits', () => {
