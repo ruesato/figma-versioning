@@ -440,11 +440,8 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
     );
 
     if (migrationFlag === 'true') {
-      console.log('[Migration] Backfill already completed, skipping');
       return;
     }
-
-    console.log('[Migration] Checking if backfill is needed...');
 
     // Check if sharedPluginData already has commits
     const existingBackup = figma.root.getSharedPluginData(
@@ -485,8 +482,6 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
       );
 
       console.log('[Migration] ✓ Backfill complete');
-    } else {
-      console.log('[Migration] No commits to backfill');
     }
 
     // Set migration flag to prevent running again
@@ -615,7 +610,6 @@ async function saveCommit(commit: Commit): Promise<void> {
       SHARED_PLUGIN_COMMITS_KEY,
       JSON.stringify(serializedCommits)
     );
-    console.log(`[Storage] ✓ Backup saved to sharedPluginData (${commits.length} commits)`);
   } catch (error) {
     console.warn(`[Storage] ⚠ Failed to save backup to sharedPluginData:`, error);
     // Non-fatal: clientStorage save succeeded, so we can continue
