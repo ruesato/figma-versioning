@@ -17,6 +17,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "clean": "rm -rf dist"
@@ -29,6 +32,8 @@
   "author": "Ryan Uesato",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "@vitest/ui": "^4.0.18",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
   }
 }

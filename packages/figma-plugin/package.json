@@ -10,6 +10,9 @@
     "dev": "npm run build:css && concurrently npm:watch:css npm:watch:js",
     "watch:css": "tailwindcss --input ./src/input.css --output ./src/output.css --watch",
     "watch:js": "build-figma-plugin --typecheck --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "clean": "rm -rf dist build"
@@ -44,10 +47,13 @@
     "@create-figma-plugin/build": "^4.0.3",
     "@create-figma-plugin/tsconfig": "^4.0.3",
     "@figma/plugin-typings": "^1.103.0",
+    "@types/node": "^25.2.2",
+    "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
   }
 }

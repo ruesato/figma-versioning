@@ -1,214 +1,339 @@
-# Figma Versioning Plugin
+# Figma Versioning
 
-A Figma plugin for creating semantic versions with automatic changelog generation, comment tracking, and design metrics.
+A powerful Figma plugin for design versioning, changelog management, and collaboration tracking.
 
 ## Features
 
-- **Semantic Versioning**: Auto-increment major, minor, or patch versions (e.g., 1.0.0 → 1.1.0)
-- **Date-based Versioning**: Use date with automatic sequence suffix (e.g., 2026-01-14, 2026-01-14.1)
-- **Comment Tracking**: Automatically capture comments from your Figma file
-- **Annotation Collection**: Collect Dev Mode annotations
-- **Design Metrics**: Track node counts (frames, components, instances, text nodes)
-- **Persistent History**: All commits stored with full metadata
+- **📅 Flexible Versioning**: Choose between semantic versioning (1.2.3) or date-based versioning (2024-01-15)
+- **📝 Automatic Changelog**: Generate beautiful changelog entries with every version
+- **💬 Comment Tracking**: Automatically capture and track Figma comments
+- **📌 Annotation Support**: Include design annotations in your changelog
+- **📊 Activity Histogram**: Visualize your design history over time
+- **🔍 Smart Filtering**: Only new comments and annotations appear in each version
+- **💾 Reliable Storage**: Chunked storage system handles large project histories
+- **🎨 Visual Changelog**: Auto-generated changelog frames on a dedicated page
 
-## Installation & Development
+## Installation
 
-### Prerequisites
+### From Figma Community (Coming Soon)
 
-- Node.js 18+ and pnpm
-- Figma desktop app
+1. Open Figma Desktop
+2. Go to **Plugins** → **Browse plugins in Community**
+3. Search for "Figma Versioning"
+4. Click **Install**
 
-### Setup
+### Manual Installation (Development)
 
-1. **Clone and install dependencies:**
-   ```bash
-   cd /Users/ryanuesato/Documents/src/figma-versioning
+1. Clone this repository:
+   \`\`\`bash
+   git clone https://github.com/yourusername/figma-versioning.git
+   cd figma-versioning
+   \`\`\`
+
+2. Install dependencies:
+   \`\`\`bash
    pnpm install
-   ```
+   \`\`\`
 
-2. **Build the plugin:**
-   ```bash
+3. Build the plugin:
+   \`\`\`bash
    pnpm build
-   ```
+   \`\`\`
 
-3. **Load plugin in Figma:**
-    - Open Figma desktop app
-    - Go to **Plugins** → **Development** → **Import plugin from manifest...**
-    - Navigate to `packages/figma-plugin/dist/manifest.json`
-    - Select the manifest file
+4. In Figma Desktop:
+   - Go to **Plugins** → **Development** → **Import plugin from manifest**
+   - Select the \`manifest.json\` file from \`packages/figma-plugin/dist/\`
 
-### Development Mode
+## Quick Start
 
-To rebuild automatically as you make changes:
+### 1. First Launch
 
-```bash
-cd packages/figma-plugin
-pnpm dev
-```
+When you first open the plugin:
 
-This will watch for changes and rebuild the plugin automatically.
+1. Choose your versioning mode:
+   - **Semantic Versioning**: Traditional software versioning (1.0.0, 1.1.0, 2.0.0)
+   - **Date-based Versioning**: Date stamps with optional sequence (2024-01-15, 2024-01-15.1)
 
-## Usage
+2. (Optional) Configure your Personal Access Token (PAT):
+   - Go to Settings tab
+   - Enter your Figma PAT to enable comment fetching
+   - [How to get a Figma PAT](https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens)
 
-### First Time Setup (Optional)
+### 2. Creating Your First Version
 
-1. **Run the plugin:**
-   - In Figma, right-click anywhere → **Plugins** → **Development** → **Figma Versioning**
+1. Open your Figma file
+2. Run the plugin: **Plugins** → **Figma Versioning**
+3. Fill in the version details:
+   - **Title**: Brief description (e.g., "Updated button styles")
+   - **Description**: (Optional) Detailed notes
+   - **Version Type**: For semantic versioning, choose Major/Minor/Patch
+4. Click **Create Version**
 
-2. **Add Personal Access Token (PAT):**
-   - If you see the onboarding screen, you can add a Figma PAT to enable comment tracking
-   - Go to [Figma Account Settings](https://www.figma.com/settings)
-   - Scroll to "Personal access tokens"
-   - Create a new token
-   - Copy and paste it into the plugin
-   - **Or skip this step** - the plugin works without a PAT, but comment tracking will be disabled
+The plugin will:
+- ✅ Save the version to Figma's version history
+- ✅ Capture current comments and annotations
+- ✅ Generate a changelog entry
+- ✅ Update the activity histogram
 
-### Creating a Version
+### 3. Viewing Your Changelog
 
-1. **Open the plugin:**
-   - Right-click → **Plugins** → **Development** → **Figma Versioning**
+The plugin automatically creates a "Changelog" page in your file with:
 
-2. **Write your commit message:**
-   - Enter a description of what changed (required, max 500 characters)
-   - The character counter shows remaining space
+- **Individual Entries**: Each version gets a beautifully formatted frame showing:
+  - Version number and title
+  - Author and timestamp
+  - Metrics (node counts)
+  - Comments and annotations
+  - Description
 
-3. **Choose versioning mode:**
-   - **Semantic Versioning**: Select major/minor/patch increment
-     - Major: Breaking changes (1.0.0 → 2.0.0)
-     - Minor: New features (1.0.0 → 1.1.0)
-     - Patch: Bug fixes (1.0.0 → 1.0.1)
-   - **Date-based Versioning**: Uses current date with auto-sequencing
-     - First commit today: 2026-01-14
-     - Second commit today: 2026-01-14.1
+- **Activity Histogram**: Visual timeline of your versions
+  - Click any bar to navigate to that version
+  - See activity patterns over time
 
-4. **Review version preview:**
-   - See what version number will be created
+## Versioning Modes
 
-5. **Create commit:**
-   - Click "Create Commit" button
-   - Version is saved to Figma's version history
-   - Commit data is stored in the plugin
+### Semantic Versioning
 
-### Settings
+Best for: Product files, design systems, component libraries
 
-Access settings from the main screen:
+\`\`\`
+1.0.0 → 1.0.1 (Patch)   - Bug fixes, small tweaks
+1.0.1 → 1.1.0 (Minor)   - New features, additions
+1.1.0 → 2.0.0 (Major)   - Breaking changes, major redesigns
+\`\`\`
 
-- **Update PAT**: Change your Personal Access Token
-- **Remove PAT**: Disable comment tracking
-- **View current mode**: See your selected versioning mode
+### Date-based Versioning
 
-## What Gets Captured
+Best for: Marketing assets, one-off designs, rapid iterations
 
-Each commit captures:
+\`\`\`
+2024-01-15              - First version of the day
+2024-01-15.1            - Second version on the same day
+2024-01-16              - First version of the next day
+\`\`\`
 
-- **Version number**: Semantic (1.2.3) or date-based (2026-01-14)
-- **Commit message**: Your description of changes
-- **Author**: Your Figma username
-- **Timestamp**: When the commit was created
-- **Comments**: All comments in the file (requires PAT)
-- **Annotations**: All Dev Mode annotations on current page
-- **Metrics**:
-  - Total node count
-  - Frame count
-  - Component count
-  - Instance count
-  - Text node count
-  - Feedback count (comments + annotations)
+## Comment Integration
 
-## Project Structure
+### Setting Up
 
-```
-figma-versioning/
-├── packages/
-│   ├── core/                 # Shared types and utilities
-│   │   ├── src/
-│   │   │   ├── types.ts     # TypeScript interfaces
-│   │   │   ├── versioning.ts # Version calculation logic
-│   │   │   └── index.ts
-│   │   └── package.json
-│   │
-│   └── figma-plugin/         # Figma plugin
-│       ├── src/
-│       │   ├── main.ts      # Plugin backend (runs in Figma sandbox)
-│       │   └── ui.tsx       # Plugin UI (React/Preact)
-│       ├── manifest.json     # Figma plugin manifest
-│       └── package.json
-│
-└── package.json              # Root package.json
-```
+1. Go to **Settings** tab in the plugin
+2. Click **Generate PAT** or enter your existing token
+3. Click **Validate & Save**
+
+### How It Works
+
+- Comments are fetched from Figma's REST API
+- Only **new** comments appear in each version
+- Comments are deduplicated across versions
+- Each version shows incremental feedback
+
+### Without a PAT
+
+The plugin works without a PAT, but comment tracking will be disabled. You'll still get:
+- Version management
+- Annotation tracking
+- Changelog generation
+- Activity histogram
+
+## Annotations
+
+Annotations are automatically captured from your Figma file:
+
+- **Dev Mode Annotations**: All annotations created in Dev Mode
+- **Pinned Comments**: Comments attached to specific nodes
+- **Smart Filtering**: Only new annotations appear in each version
+
+No setup required - annotations just work!
+
+## Changelog Management
+
+### Viewing the Changelog
+
+1. The plugin creates a "Changelog" page automatically
+2. Each version is a frame on this page
+3. Frames are ordered newest → oldest
+4. Click the histogram to navigate to any version
+
+### Rebuilding the Changelog
+
+If frames get deleted or corrupted:
+
+1. Go to **Settings** tab
+2. Click **Rebuild Changelog**
+3. Wait for the process to complete
+
+This regenerates all changelog frames from stored data.
+
+## Tips & Best Practices
+
+### Creating Meaningful Versions
+
+- **Be descriptive**: Use clear titles (✅ "Updated navigation menu" vs. ❌ "Changes")
+- **Regular cadence**: Create versions at natural checkpoints
+- **Include context**: Use descriptions for complex changes
+- **Capture feedback**: Create versions after design reviews to capture all comments
+
+### Organizing Your Changelog
+
+- The Changelog page is automatically managed
+- Don't manually edit changelog frames (they'll be regenerated)
+- Use the histogram to find specific versions quickly
+- Archive old versions by moving frames to another page
+
+### Performance Tips
+
+- For large files (>500 nodes), version creation may take a few seconds
+- Comments are fetched asynchronously - don't close the plugin immediately
+- Rebuilding the changelog is safe to do anytime
+- The plugin uses chunked storage to handle unlimited versions
 
 ## Troubleshooting
 
-### Plugin not showing in Figma
+### Comments Not Appearing
 
-- Make sure you ran `pnpm build` successfully
-- Try closing and reopening Figma
-- Re-import the manifest: Plugins → Development → Import plugin from manifest
+**Problem**: Comments don't show up in versions
 
-### "Invalid token" error
+**Solutions**:
+1. Check that your PAT is configured (Settings tab)
+2. Verify the PAT hasn't expired
+3. Make sure you have permission to view comments in the file
+4. Check browser console for API errors
 
-- Your PAT may have expired
-- Go to Settings and update or remove the token
-- You can still create versions without a PAT (comment tracking will be disabled)
+### Plugin Loads Slowly
 
-### Changes not reflecting
+**Problem**: Plugin takes a long time to open
 
-- If in development mode, make sure `pnpm dev` is running
-- Try reloading the plugin: Plugins → Development → Reload
-- Check the Figma console for errors: Plugins → Development → Show console
+**Solutions**:
+1. Check your file size (large files are slower)
+2. Try rebuilding the changelog (Settings → Rebuild Changelog)
+3. Close and reopen Figma Desktop
+4. Check for Figma Desktop updates
 
-### Build errors
+### Changelog Frames Missing
 
-```bash
-# Clean and rebuild everything
-pnpm clean
-pnpm install
-pnpm build
-```
+**Problem**: Some or all changelog frames are gone
 
-## Storage
+**Solution**:
+1. Go to Settings tab
+2. Click **Rebuild Changelog**
+3. All frames will be regenerated from stored data
 
-All commit data is stored in Figma's `clientStorage`:
-- Persists across plugin sessions
-- Stored per-file (each Figma file has its own commit history)
-- Automatically chunked to work within storage limits (10 commits per chunk)
+### "Invalid Token" Error
 
-## Version History Integration
+**Problem**: PAT validation fails
 
-Versions created by this plugin appear in:
-- Figma's native version history (File → Show version history)
-- Format: `{version} - {message}`
-- Example: `1.2.0 - Added new button component`
+**Solutions**:
+1. Generate a new PAT in your [Figma account settings](https://www.figma.com/developers/api#access-tokens)
+2. Make sure the token has read access to files
+3. Copy the entire token without extra spaces
+4. Try pasting in Settings again
 
-## Next Steps
+### Version Creation Fails
 
-Phase 4 (Commit Management) is complete! Future phases will add:
-- Phase 5: Changelog rendering
-- Phase 6: Multi-file support
-- Phase 7: LLM integration for auto-generated changelogs
-- Phase 8: MCP server for external integrations
+**Problem**: Error when creating a version
 
-## Development Commands
+**Solutions**:
+1. Check browser console for specific error message
+2. Ensure you have edit access to the file
+3. Try with a simpler title/description
+4. Check that versioning mode is set correctly
 
-```bash
-# Install dependencies
-pnpm install
+## Advanced Features
 
-# Build all packages
-pnpm build
+### Metrics Tracking
 
-# Build specific package
-pnpm --filter @figma-versioning/core build
-pnpm --filter @figma-versioning/figma-plugin build
+Each version automatically tracks:
 
-# Development mode (watch and rebuild)
-cd packages/figma-plugin
-pnpm dev
+- Total nodes in your file
+- Number of frames
+- Number of components
+- Number of instances
+- Number of text nodes
+- Feedback count (comments + annotations)
 
-# Type checking
-pnpm --filter @figma-versioning/figma-plugin typecheck
-```
+These metrics help you understand how your file evolves over time.
+
+### Storage Architecture
+
+The plugin uses Figma's \`clientStorage\` API with intelligent chunking:
+
+- Commits are stored in chunks of 10
+- Unlimited version history
+- Automatic chunk management
+- Date objects are properly serialized
+- Deduplicated commit IDs
+
+### Version History Integration
+
+Each version is also saved to Figma's native version history:
+
+- Find versions in **File** → **Show version history**
+- Native and plugin versions stay in sync
+- Plugin provides richer metadata and changelog
+
+## Privacy & Security
+
+- Your PAT is stored securely in Figma's \`clientStorage\`
+- Only you can access your stored PAT
+- PAT is only used to fetch comments from files you have access to
+- No data is sent to external servers
+- All processing happens locally in the Figma plugin sandbox
+
+## FAQ
+
+**Q: Can I use this with Figma in the browser?**
+
+A: Not yet. The plugin requires Figma Desktop for certain features. Browser support is planned for a future release.
+
+**Q: What happens if I delete the Changelog page?**
+
+A: Your version data is safely stored. Just rebuild the changelog (Settings → Rebuild Changelog) to regenerate the page.
+
+**Q: Can I export my version history?**
+
+A: Not yet, but this feature is planned. For now, your data is stored in Figma's clientStorage.
+
+**Q: Does this work with FigJam?**
+
+A: Currently, the plugin is designed for Figma design files. FigJam support may come in a future release.
+
+**Q: How many versions can I create?**
+
+A: There's no hard limit. The plugin uses chunked storage to handle unlimited versions.
+
+**Q: Can multiple people use this plugin on the same file?**
+
+A: Yes! Each person's plugin instance manages versions independently. However, since versions are saved to Figma's version history, they'll be visible to all collaborators.
+
+## Roadmap
+
+- [ ] Browser compatibility
+- [ ] Version comparison view
+- [ ] Export to markdown/PDF
+- [ ] MCP server for Claude integration
+- [ ] LLM-powered summaries
+- [ ] Natural language changelog queries
+- [ ] FigJam support
+- [ ] Team sync and collaboration features
+
+## Support
+
+- **Bug reports**: [GitHub Issues](https://github.com/yourusername/figma-versioning/issues)
+- **Feature requests**: [GitHub Discussions](https://github.com/yourusername/figma-versioning/discussions)
+- **Questions**: [GitHub Discussions Q&A](https://github.com/yourusername/figma-versioning/discussions/categories/q-a)
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+Built with:
+- [@create-figma-plugin](https://github.com/yuanqing/create-figma-plugin)
+- [Preact](https://preactjs.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [@figma-versioning/core](packages/core) - Core versioning utilities
+
+---
+
+Made with ❤️ for the Figma community
