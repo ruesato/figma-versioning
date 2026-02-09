@@ -446,6 +446,63 @@ async function loadCommits(): Promise<Commit[]> {
     }
   }
 
+  // Fallback: If clientStorage is empty, try to restore from sharedPluginData
+  if (commits.length === 0) {
+    try {
+      const backupData = figma.root.getSharedPluginData(
+        SHARED_PLUGIN_NAMESPACE,
+        SHARED_PLUGIN_COMMITS_KEY
+      );
+
+      if (backupData) {
+        console.log('[Storage] clientStorage empty, restoring from sharedPluginData backup');
+        const parsedCommits = JSON.parse(backupData);
+
+        if (Array.isArray(parsedCommits) && parsedCommits.length > 0) {
+          // Restore Date objects (they were serialized as strings)
+          const restoredCommits = parsedCommits.map(c => ({
+            ...c,
+            timestamp: new Date(c.timestamp),
+            comments: c.comments?.map((comment: any) => ({
+              ...comment,
+              timestamp: new Date(comment.timestamp)
+            })) || []
+          }));
+
+          // Migrate legacy commits
+          const migratedCommits = restoredCommits.map(migrateLegacyCommit);
+
+          // Restore to clientStorage (chunked)
+          const CHUNK_SIZE = 10;
+          const chunks: Commit[][] = [];
+          for (let i = 0; i < migratedCommits.length; i += CHUNK_SIZE) {
+            chunks.push(migratedCommits.slice(i, i + CHUNK_SIZE));
+          }
+
+          // Save each chunk
+          for (let i = 0; i < chunks.length; i++) {
+            const serialized = JSON.parse(JSON.stringify(chunks[i]));
+            await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
+          }
+
+          // Update metadata
+          const restoredMeta = {
+            ...meta,
+            chunkCount: chunks.length,
+            lastCommitId: migratedCommits[0]?.id
+          };
+          await saveChangelogMeta(restoredMeta);
+
+          console.log(`[Storage] ✓ Restored ${migratedCommits.length} commits from backup to clientStorage`);
+          return migratedCommits;
+        }
+      }
+    } catch (error) {
+      console.warn('[Storage] ⚠ Failed to restore from sharedPluginData backup:', error);
+      // Non-fatal: return empty array
+    }
+  }
+
   return commits;
 }
 
