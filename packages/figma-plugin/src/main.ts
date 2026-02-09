@@ -9,6 +9,10 @@ const CURRENT_VERSION_KEY = 'figma_versioning_current_version';
 const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
+// SharedPluginData keys for backup storage
+const SHARED_PLUGIN_NAMESPACE = 'figma-versioning';
+const SHARED_PLUGIN_COMMITS_KEY = 'commits_backup';
+
 // Cached file key - requires enablePrivatePluginApi in manifest
 let cachedFileKey: string | null = null;
 
@@ -473,6 +477,20 @@ async function saveCommit(commit: Commit): Promise<void> {
   for (let i = 0; i < chunks.length; i++) {
     const serialized = JSON.parse(JSON.stringify(chunks[i]));
     await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
+  }
+
+  // Dual-write: Also save to sharedPluginData as backup (survives clientStorage clears)
+  try {
+    const serializedCommits = JSON.parse(JSON.stringify(commits));
+    figma.root.setSharedPluginData(
+      SHARED_PLUGIN_NAMESPACE,
+      SHARED_PLUGIN_COMMITS_KEY,
+      JSON.stringify(serializedCommits)
+    );
+    console.log(`[Storage] ✓ Backup saved to sharedPluginData (${commits.length} commits)`);
+  } catch (error) {
+    console.warn(`[Storage] ⚠ Failed to save backup to sharedPluginData:`, error);
+    // Non-fatal: clientStorage save succeeded, so we can continue
   }
 
   // Verify the commit was saved (read back and validate)
