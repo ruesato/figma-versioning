@@ -12,6 +12,7 @@ const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 // SharedPluginData keys for backup storage
 const SHARED_PLUGIN_NAMESPACE = 'figma-versioning';
 const SHARED_PLUGIN_COMMITS_KEY = 'commits_backup';
+const MIGRATION_FLAG_KEY = 'migration_backfill_v1';
 
 // Cached file key - requires enablePrivatePluginApi in manifest
 let cachedFileKey: string | null = null;
@@ -427,6 +428,76 @@ function migrateLegacyCommit(commit: any): Commit {
 }
 
 /**
+ * One-time migration: Backfill existing clientStorage commits to sharedPluginData
+ * Only runs once on first launch after this feature is deployed
+ */
+async function migrateCommitsToSharedPluginData(): Promise<void> {
+  try {
+    // Check if migration has already been done
+    const migrationFlag = figma.root.getSharedPluginData(
+      SHARED_PLUGIN_NAMESPACE,
+      MIGRATION_FLAG_KEY
+    );
+
+    if (migrationFlag === 'true') {
+      console.log('[Migration] Backfill already completed, skipping');
+      return;
+    }
+
+    console.log('[Migration] Checking if backfill is needed...');
+
+    // Check if sharedPluginData already has commits
+    const existingBackup = figma.root.getSharedPluginData(
+      SHARED_PLUGIN_NAMESPACE,
+      SHARED_PLUGIN_COMMITS_KEY
+    );
+
+    if (existingBackup) {
+      console.log('[Migration] sharedPluginData already has commits, skipping backfill');
+      figma.root.setSharedPluginData(SHARED_PLUGIN_NAMESPACE, MIGRATION_FLAG_KEY, 'true');
+      return;
+    }
+
+    // Load commits from clientStorage
+    const meta = await getChangelogMeta();
+    const commits: Commit[] = [];
+
+    for (let i = 0; i < meta.chunkCount; i++) {
+      try {
+        const chunk = await figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}${i}`);
+        if (chunk && Array.isArray(chunk)) {
+          commits.push(...chunk);
+        }
+      } catch (error) {
+        console.error(`[Migration] Error loading chunk ${i}:`, error);
+      }
+    }
+
+    // If we have commits in clientStorage, backfill to sharedPluginData
+    if (commits.length > 0) {
+      console.log(`[Migration] Backfilling ${commits.length} commits to sharedPluginData...`);
+
+      const serializedCommits = JSON.parse(JSON.stringify(commits));
+      figma.root.setSharedPluginData(
+        SHARED_PLUGIN_NAMESPACE,
+        SHARED_PLUGIN_COMMITS_KEY,
+        JSON.stringify(serializedCommits)
+      );
+
+      console.log('[Migration] ✓ Backfill complete');
+    } else {
+      console.log('[Migration] No commits to backfill');
+    }
+
+    // Set migration flag to prevent running again
+    figma.root.setSharedPluginData(SHARED_PLUGIN_NAMESPACE, MIGRATION_FLAG_KEY, 'true');
+  } catch (error) {
+    console.error('[Migration] ⚠ Failed to run backfill migration:', error);
+    // Non-fatal: don't block plugin startup
+  }
+}
+
+/**
  * Load all commits from storage chunks
  */
 async function loadCommits(): Promise<Commit[]> {
@@ -596,6 +667,9 @@ export default function () {
   // Cache file key at init — requires enablePrivatePluginApi in manifest
   cachedFileKey = getFileKey();
   console.log(`[Init] File key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null'}`);
+
+  // Run one-time migration to backfill existing commits to sharedPluginData
+  migrateCommitsToSharedPluginData();
 
   // Setup histogram interactivity for navigation
   setupHistogramInteractivity();
