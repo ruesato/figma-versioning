@@ -1,4 +1,4 @@
-import { h } from 'preact';
+import { h, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { emit, on } from '@create-figma-plugin/utilities';
 import type { PreCommitStats } from '@figma-versioning/core';
@@ -6,11 +6,16 @@ import type { PreCommitStats } from '@figma-versioning/core';
 export function PreCommitStatsPanel() {
   const [stats, setStats] = useState<PreCommitStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Function to request fresh stats
   const refreshStats = () => {
     console.log('[PreCommitStatsPanel] Requesting stats...');
     emit('GET_PRE_COMMIT_STATS');
+  };
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
   };
 
   useEffect(() => {
@@ -74,7 +79,25 @@ export function PreCommitStatsPanel() {
     headerRow: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between'
+      justifyContent: 'space-between',
+      cursor: 'pointer',
+      userSelect: 'none' as const
+    },
+    headerLeft: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      flex: 1
+    },
+    caret: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '16px',
+      height: '16px',
+      color: 'white',
+      transition: 'transform 0.2s ease',
+      transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)'
     },
     header: {
       fontFamily: 'Inter, sans-serif',
@@ -133,19 +156,40 @@ export function PreCommitStatsPanel() {
     }
   };
 
+  // Caret icon SVG
+  const CaretIcon = () => (
+    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
   return (
     <div style={styles.container}>
-      <div style={styles.headerRow}>
-        <p style={styles.header}>
-          {totalChanges} change{totalChanges !== 1 ? 's' : ''} since last commit
-        </p>
-        <button style={styles.refreshButton} onClick={refreshStats}>
+      <div style={styles.headerRow} onClick={toggleExpanded}>
+        <div style={styles.headerLeft}>
+          <div style={styles.caret}>
+            <CaretIcon />
+          </div>
+          <p style={styles.header}>
+            {totalChanges} change{totalChanges !== 1 ? 's' : ''} since last commit
+          </p>
+        </div>
+        <button
+          style={styles.refreshButton}
+          onClick={(e) => {
+            e.stopPropagation();
+            refreshStats();
+          }}
+        >
           ↻ Refresh
         </button>
       </div>
 
-      {/* Page Changes Section */}
-      {stats.pageChanges.length > 0 && (
+      {/* Collapsible content */}
+      {isExpanded && (
+        <>
+          {/* Page Changes Section */}
+          {stats.pageChanges.length > 0 && (
         <div style={styles.section}>
           <p style={styles.sectionTitle}>📄 Pages with changes</p>
           <ul style={styles.list}>
@@ -189,6 +233,8 @@ export function PreCommitStatsPanel() {
         <p style={styles.warning}>
           Page changes not tracked (plugin wasn't running). Only showing comments and annotations.
         </p>
+      )}
+        </>
       )}
     </div>
   );
