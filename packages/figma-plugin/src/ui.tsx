@@ -5,6 +5,7 @@ import { useState, useEffect } from 'preact/hooks';
 
 import './output.css';
 import { HistogramPanel } from './components/HistogramPanel';
+import { PreCommitStatsPanel } from './components/PreCommitStatsPanel';
 
 function OnboardingView({ onComplete, onSkip }: { onComplete: () => void; onSkip: () => void }) {
   const [pat, setPat] = useState('');
@@ -712,6 +713,9 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       <div style={styles.scrollableContent}>
         {/* Recent Activity Section */}
         <HistogramPanel />
+
+        {/* Pre-Commit Stats Panel */}
+        <PreCommitStatsPanel />
 
         {/* Create Commit Section */}
         <p style={styles.sectionHeader}>Create a commit</p>

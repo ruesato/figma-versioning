@@ -1,6 +1,6 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
-import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta } from '@figma-versioning/core';
+import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta, PreCommitStats, PageChangeStats } from '@figma-versioning/core';
 import { renderChangelogEntry, setupHistogramInteractivity } from './changelog';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
@@ -16,6 +16,115 @@ const MIGRATION_FLAG_KEY = 'migration_backfill_v1';
 
 // Cached file key - requires enablePrivatePluginApi in manifest
 let cachedFileKey: string | null = null;
+
+/**
+ * In-memory change tracking store
+ * Tracks document changes by page since plugin was opened
+ */
+interface PageChangeTracker {
+  nodesAdded: Set<string>;
+  nodesRemoved: Set<string>;
+  nodesModified: Set<string>;
+}
+
+const changeTrackingStore: Map<string, PageChangeTracker> = new Map();
+let isChangeTrackingActive = false;
+
+/**
+ * Get or create a page change tracker
+ */
+function getPageTracker(pageId: string): PageChangeTracker {
+  if (!changeTrackingStore.has(pageId)) {
+    changeTrackingStore.set(pageId, {
+      nodesAdded: new Set(),
+      nodesRemoved: new Set(),
+      nodesModified: new Set()
+    });
+  }
+  return changeTrackingStore.get(pageId)!;
+}
+
+/**
+ * Get the page ID for a given node
+ */
+function getPageIdForNode(nodeId: string): string | null {
+  try {
+    const node = figma.getNodeById(nodeId);
+    if (!node) return null;
+
+    let current: BaseNode | null = node;
+    while (current && current.type !== 'PAGE') {
+      current = current.parent;
+    }
+
+    return current?.id || null;
+  } catch (error) {
+    console.error('[ChangeTracking] Error getting page for node:', error);
+    return null;
+  }
+}
+
+/**
+ * Reset change tracking store
+ */
+function resetChangeTracking(): void {
+  changeTrackingStore.clear();
+  console.log('[ChangeTracking] Store reset');
+}
+
+/**
+ * Get current pre-commit stats
+ */
+async function getPreCommitStats(): Promise<PreCommitStats> {
+  // Load previous commits to count new comments/annotations
+  const existingCommits = await loadCommits();
+
+  // Fetch comments and filter to new ones
+  const commentsResult = await fetchComments();
+  const allComments = commentsResult.success ? commentsResult.comments || [] : [];
+  const allPreviousComments = existingCommits.flatMap(commit => commit.comments || []);
+  const newComments = filterNewComments(allComments, allPreviousComments);
+
+  // Collect annotations and filter to new ones
+  const allAnnotations = await collectAnnotations();
+  const allPreviousAnnotations = existingCommits.flatMap(commit => commit.annotations || []);
+  const newAnnotations = filterNewAnnotations(allAnnotations, allPreviousAnnotations);
+
+  // Build page change stats from tracking store
+  const pageChanges: PageChangeStats[] = [];
+
+  const entries = Array.from(changeTrackingStore.entries());
+  for (const entry of entries) {
+    const pageId = entry[0];
+    const tracker = entry[1];
+
+    const page = figma.getNodeById(pageId) as PageNode | null;
+    if (!page) continue;
+
+    const nodesAdded = tracker.nodesAdded.size;
+    const nodesRemoved = tracker.nodesRemoved.size;
+    const nodesModified = tracker.nodesModified.size;
+
+    // Only include pages with changes
+    if (nodesAdded > 0 || nodesRemoved > 0 || nodesModified > 0) {
+      pageChanges.push({
+        pageId: page.id,
+        pageName: page.name,
+        nodesAdded,
+        nodesRemoved,
+        nodesModified,
+        totalDelta: nodesAdded - nodesRemoved
+      });
+    }
+  }
+
+  return {
+    newCommentsCount: newComments.length,
+    newAnnotationsCount: newAnnotations.length,
+    pageChanges,
+    hasRealTimeTracking: isChangeTrackingActive
+  };
+}
 
 function getFileKey(): string | null {
   if (cachedFileKey) return cachedFileKey;
@@ -668,6 +777,34 @@ export default function () {
   // Setup histogram interactivity for navigation
   setupHistogramInteractivity();
 
+  // Setup change tracking with documentchange listener
+  figma.on('documentchange', (event: DocumentChangeEvent) => {
+    isChangeTrackingActive = true;
+
+    for (const change of event.documentChanges) {
+      const pageId = getPageIdForNode(change.id);
+      if (!pageId) continue;
+
+      const tracker = getPageTracker(pageId);
+
+      if (change.type === 'CREATE') {
+        tracker.nodesAdded.add(change.id);
+        // Remove from removed set if it was previously deleted and re-added
+        tracker.nodesRemoved.delete(change.id);
+      } else if (change.type === 'DELETE') {
+        tracker.nodesRemoved.add(change.id);
+        // Remove from added/modified sets if it was previously tracked
+        tracker.nodesAdded.delete(change.id);
+        tracker.nodesModified.delete(change.id);
+      } else if (change.type === 'PROPERTY_CHANGE') {
+        // Only track as modified if not already tracked as added
+        if (!tracker.nodesAdded.has(change.id)) {
+          tracker.nodesModified.add(change.id);
+        }
+      }
+    }
+  });
+
   // Handle PAT status check
   on('CHECK_PAT', async function () {
     const hasToken = await checkPatExists();
@@ -740,6 +877,24 @@ export default function () {
   on('COLLECT_METRICS', function (data: { feedbackCount: number }) {
     const metrics = collectMetrics(data.feedbackCount);
     emit('METRICS_COLLECTED', { metrics });
+  });
+
+  // Handle pre-commit stats request
+  on('GET_PRE_COMMIT_STATS', async function () {
+    try {
+      const stats = await getPreCommitStats();
+      emit('PRE_COMMIT_STATS', { stats });
+    } catch (error) {
+      console.error('Error getting pre-commit stats:', error);
+      emit('PRE_COMMIT_STATS', {
+        stats: {
+          newCommentsCount: 0,
+          newAnnotationsCount: 0,
+          pageChanges: [],
+          hasRealTimeTracking: false
+        }
+      });
+    }
   });
 
   // Handle recent commits retrieval for histogram
@@ -903,6 +1058,9 @@ export default function () {
 
       // Notify UI of success
       emit('VERSION_CREATED', { success: true, version, commit });
+
+      // Reset change tracking after successful commit
+      resetChangeTracking();
 
       figma.notify(`Version ${version} created successfully`);
 

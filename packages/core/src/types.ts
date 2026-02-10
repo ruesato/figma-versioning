@@ -142,3 +142,35 @@ export interface FigmaChangelogEntry {
   changes: string[];
   author?: string;
 }
+
+/**
+ * Page-level change statistics for pre-commit display
+ */
+export interface PageChangeStats {
+  /** Page ID */
+  pageId: string;
+  /** Page name */
+  pageName: string;
+  /** Number of nodes added */
+  nodesAdded: number;
+  /** Number of nodes removed */
+  nodesRemoved: number;
+  /** Number of nodes modified (property changes) */
+  nodesModified: number;
+  /** Total delta (added - removed) */
+  totalDelta: number;
+}
+
+/**
+ * Pre-commit statistics showing what changed since last commit
+ */
+export interface PreCommitStats {
+  /** Comment count since last commit */
+  newCommentsCount: number;
+  /** Annotation count since last commit */
+  newAnnotationsCount: number;
+  /** Page-level change statistics */
+  pageChanges: PageChangeStats[];
+  /** Whether real-time tracking was active (if false, only comments/annotations available) */
+  hasRealTimeTracking: boolean;
+}
