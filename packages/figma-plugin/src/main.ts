@@ -76,6 +76,10 @@ function resetChangeTracking(): void {
  * Get current pre-commit stats
  */
 async function getPreCommitStats(): Promise<PreCommitStats> {
+  console.log('[ChangeTracking] Getting pre-commit stats...');
+  console.log('[ChangeTracking] Tracking active:', isChangeTrackingActive);
+  console.log('[ChangeTracking] Pages being tracked:', changeTrackingStore.size);
+
   // Load previous commits to count new comments/annotations
   const existingCommits = await loadCommits();
 
@@ -105,6 +109,8 @@ async function getPreCommitStats(): Promise<PreCommitStats> {
     const nodesRemoved = tracker.nodesRemoved.size;
     const nodesModified = tracker.nodesModified.size;
 
+    console.log(`[ChangeTracking] Page "${page.name}": +${nodesAdded} ~${nodesModified} -${nodesRemoved}`);
+
     // Only include pages with changes
     if (nodesAdded > 0 || nodesRemoved > 0 || nodesModified > 0) {
       pageChanges.push({
@@ -117,6 +123,8 @@ async function getPreCommitStats(): Promise<PreCommitStats> {
       });
     }
   }
+
+  console.log(`[ChangeTracking] Stats: ${newComments.length} comments, ${newAnnotations.length} annotations, ${pageChanges.length} pages with changes`);
 
   return {
     newCommentsCount: newComments.length,
@@ -780,10 +788,14 @@ export default function () {
   // Setup change tracking with documentchange listener
   figma.on('documentchange', (event: DocumentChangeEvent) => {
     isChangeTrackingActive = true;
+    console.log(`[ChangeTracking] Document changed - ${event.documentChanges.length} changes`);
 
     for (const change of event.documentChanges) {
       const pageId = getPageIdForNode(change.id);
-      if (!pageId) continue;
+      if (!pageId) {
+        console.log(`[ChangeTracking] Could not determine page for node ${change.id}`);
+        continue;
+      }
 
       const tracker = getPageTracker(pageId);
 
@@ -791,18 +803,24 @@ export default function () {
         tracker.nodesAdded.add(change.id);
         // Remove from removed set if it was previously deleted and re-added
         tracker.nodesRemoved.delete(change.id);
+        console.log(`[ChangeTracking] Node created: ${change.id} on page ${pageId}`);
       } else if (change.type === 'DELETE') {
         tracker.nodesRemoved.add(change.id);
         // Remove from added/modified sets if it was previously tracked
         tracker.nodesAdded.delete(change.id);
         tracker.nodesModified.delete(change.id);
+        console.log(`[ChangeTracking] Node deleted: ${change.id} on page ${pageId}`);
       } else if (change.type === 'PROPERTY_CHANGE') {
         // Only track as modified if not already tracked as added
         if (!tracker.nodesAdded.has(change.id)) {
           tracker.nodesModified.add(change.id);
+          console.log(`[ChangeTracking] Node modified: ${change.id} on page ${pageId}`);
         }
       }
     }
+
+    // Notify UI that stats have changed
+    emit('CHANGE_TRACKED');
   });
 
   // Handle PAT status check

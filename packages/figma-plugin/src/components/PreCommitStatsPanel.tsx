@@ -7,16 +7,32 @@ export function PreCommitStatsPanel() {
   const [stats, setStats] = useState<PreCommitStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Function to request fresh stats
+  const refreshStats = () => {
+    console.log('[PreCommitStatsPanel] Requesting stats...');
+    emit('GET_PRE_COMMIT_STATS');
+  };
+
   useEffect(() => {
     // Request stats on mount
-    emit('GET_PRE_COMMIT_STATS');
+    refreshStats();
 
-    const unsubscribe = on('PRE_COMMIT_STATS', function (data: { stats: PreCommitStats }) {
+    const unsubscribeStats = on('PRE_COMMIT_STATS', function (data: { stats: PreCommitStats }) {
+      console.log('[PreCommitStatsPanel] Received stats:', data.stats);
       setStats(data.stats);
       setIsLoading(false);
     });
 
-    return unsubscribe;
+    // Listen for change tracking events and auto-refresh
+    const unsubscribeChanges = on('CHANGE_TRACKED', function () {
+      console.log('[PreCommitStatsPanel] Change detected, refreshing stats...');
+      refreshStats();
+    });
+
+    return () => {
+      unsubscribeStats();
+      unsubscribeChanges();
+    };
   }, []);
 
   // Don't render anything while loading
@@ -39,6 +55,13 @@ export function PreCommitStatsPanel() {
     return null;
   }
 
+  // Calculate total change count
+  const totalNodeChanges = stats.pageChanges.reduce(
+    (sum, page) => sum + page.nodesAdded + page.nodesRemoved + page.nodesModified,
+    0
+  );
+  const totalChanges = totalNodeChanges + stats.newCommentsCount + stats.newAnnotationsCount;
+
   const styles = {
     container: {
       display: 'flex',
@@ -48,6 +71,11 @@ export function PreCommitStatsPanel() {
       backgroundColor: '#383838',
       borderRadius: '8px'
     },
+    headerRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    },
     header: {
       fontFamily: 'Inter, sans-serif',
       fontWeight: 600,
@@ -55,6 +83,16 @@ export function PreCommitStatsPanel() {
       color: 'white',
       margin: 0
     },
+    refreshButton: {
+      background: 'none',
+      border: 'none',
+      color: '#008ff0',
+      cursor: 'pointer',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '12px',
+      padding: '4px 8px',
+      borderRadius: '4px'
+    } as const,
     section: {
       display: 'flex',
       flexDirection: 'column' as const,
@@ -97,7 +135,14 @@ export function PreCommitStatsPanel() {
 
   return (
     <div style={styles.container}>
-      <p style={styles.header}>Changes since last commit</p>
+      <div style={styles.headerRow}>
+        <p style={styles.header}>
+          {totalChanges} change{totalChanges !== 1 ? 's' : ''} since last commit
+        </p>
+        <button style={styles.refreshButton} onClick={refreshStats}>
+          ↻ Refresh
+        </button>
+      </div>
 
       {/* Page Changes Section */}
       {stats.pageChanges.length > 0 && (
