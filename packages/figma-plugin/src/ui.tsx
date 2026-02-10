@@ -370,6 +370,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
 
   const selectedOption = VERSION_TYPE_OPTIONS.find(opt => opt.value === incrementType);
   const buttonText = isCreating ? 'Creating...' : `Create version ${nextVersion || '1.0.0'}`;
+  const isButtonDisabled = isCreating || !title.trim();
 
   // Styles matching Figma design
   const styles = {
@@ -509,6 +510,21 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       cursor: 'pointer',
       textAlign: 'center' as const
     },
+    primaryButtonDisabled: {
+      backgroundColor: '#383838',
+      border: 'none',
+      borderRadius: '32px',
+      padding: '12px 24px',
+      minHeight: '48px',
+      flex: '1 0 0',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '16px',
+      color: 'white',
+      cursor: 'not-allowed',
+      textAlign: 'center' as const,
+      opacity: 0.5
+    },
     settingsButton: {
       backgroundColor: '#383838',
       border: 'none',
@@ -627,13 +643,9 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
       {/* Fixed Action Bar at Bottom */}
       <div style={styles.actionBar}>
         <button
-          style={{
-            ...styles.primaryButton,
-            opacity: isCreating ? 0.7 : 1,
-            cursor: isCreating ? 'not-allowed' : 'pointer'
-          }}
+          style={isButtonDisabled ? styles.primaryButtonDisabled : styles.primaryButton}
           onClick={handleCreateVersion}
-          disabled={isCreating}
+          disabled={isButtonDisabled}
         >
           {buttonText}
         </button>
