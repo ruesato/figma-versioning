@@ -113,20 +113,26 @@ function OnboardingView({ onComplete, onSkip }: { onComplete: () => void; onSkip
 
 function SettingsView({ onBack }: { onBack: () => void }) {
   const [newPat, setNewPat] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [hasToken, setHasToken] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isRebuilding, setIsRebuilding] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
-  function handleUpdatePat() {
-    if (!newPat.trim()) {
-      setMessage('Please enter a new Personal Access Token');
-      setMessageType('error');
-      return;
-    }
-    setMessage('');
-    setIsUpdating(true);
+  // Check if token exists on mount
+  useEffect(() => {
+    emit('CHECK_PAT');
+
+    const unsubStatus = on('PAT_STATUS', function (data: { hasToken: boolean }) {
+      setHasToken(data.hasToken);
+    });
+
+    return unsubStatus;
+  }, []);
+
+  function handleSavePat() {
+    if (!newPat.trim()) return;
+
+    setIsSaving(true);
     emit('VALIDATE_PAT', { pat: newPat });
   }
 
@@ -136,39 +142,26 @@ function SettingsView({ onBack }: { onBack: () => void }) {
   }
 
   function handleRebuildChangelog() {
-    setMessage('');
     setIsRebuilding(true);
     emit('REBUILD_CHANGELOG');
   }
 
   useEffect(() => {
     const unsubValidation = on('PAT_VALIDATION_RESULT', function (data: { success: boolean; error?: string }) {
-      setIsUpdating(false);
+      setIsSaving(false);
       if (data.success) {
-        setMessage('Token updated successfully');
-        setMessageType('success');
+        setHasToken(true);
         setNewPat('');
-      } else {
-        setMessage(data.error || 'Invalid token. Please try again.');
-        setMessageType('error');
       }
     });
 
     const unsubRemoval = on('PAT_REMOVED', function () {
       setIsRemoving(false);
-      setMessage('Token removed successfully');
-      setMessageType('success');
+      setHasToken(false);
     });
 
     const unsubRebuild = on('CHANGELOG_REBUILT', function (data: { success: boolean; count?: number; error?: string }) {
       setIsRebuilding(false);
-      if (data.success) {
-        setMessage(`Changelog rebuilt successfully with ${data.count} entries`);
-        setMessageType('success');
-      } else {
-        setMessage(data.error || 'Failed to rebuild changelog');
-        setMessageType('error');
-      }
     });
 
     return () => {
@@ -178,79 +171,246 @@ function SettingsView({ onBack }: { onBack: () => void }) {
     };
   }, []);
 
+  const styles = {
+    container: {
+      backgroundColor: '#2c2c2c',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '24px',
+      padding: '24px',
+      borderRadius: '16px',
+      width: '100%',
+      height: '100%',
+      boxSizing: 'border-box' as const,
+      fontFamily: 'Inter, sans-serif'
+    },
+    heading: {
+      display: 'flex',
+      gap: '8px',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '100%'
+    },
+    backButton: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '24px',
+      height: '24px',
+      flexShrink: 0,
+      cursor: 'pointer',
+      background: 'none',
+      border: 'none',
+      padding: 0,
+      transform: 'rotate(90deg)'
+    },
+    headerText: {
+      flex: '1 0 0',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '12px',
+      color: '#bbb',
+      textTransform: 'uppercase' as const,
+      margin: 0
+    },
+    section: {
+      borderBottom: '1px solid #383838',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '24px',
+      paddingBottom: '32px',
+      width: '100%'
+    },
+    field: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '8px',
+      width: '100%'
+    },
+    fieldLabel: {
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '16px',
+      color: 'white',
+      margin: 0
+    },
+    fieldInput: {
+      backgroundColor: '#383838',
+      border: '1px solid #2c2c2c',
+      borderRadius: '8px',
+      padding: '12px 17px',
+      height: '48px',
+      width: '100%',
+      boxSizing: 'border-box' as const,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      color: 'white',
+      outline: 'none'
+    },
+    savedMessage: {
+      display: 'flex',
+      gap: '8px',
+      alignItems: 'center',
+      padding: '12px 17px',
+      height: '48px',
+      width: '100%',
+      boxSizing: 'border-box' as const
+    },
+    savedText: {
+      flex: '1 0 0',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '16px',
+      color: 'white',
+      opacity: 0.5,
+      margin: 0
+    },
+    trashButton: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '24px',
+      height: '24px',
+      flexShrink: 0,
+      cursor: 'pointer',
+      background: 'none',
+      border: 'none',
+      padding: 0
+    },
+    caption: {
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 400,
+      fontSize: '12px',
+      color: '#808080',
+      margin: 0
+    },
+    button: {
+      backgroundColor: '#008ff0',
+      border: 'none',
+      borderRadius: '32px',
+      padding: '12px 24px',
+      minHeight: '48px',
+      width: '100%',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '16px',
+      color: 'white',
+      cursor: 'pointer',
+      textAlign: 'center' as const
+    },
+    buttonDisabled: {
+      backgroundColor: '#383838',
+      border: 'none',
+      borderRadius: '32px',
+      padding: '12px 24px',
+      minHeight: '48px',
+      width: '100%',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '16px',
+      color: 'white',
+      cursor: 'not-allowed',
+      textAlign: 'center' as const,
+      opacity: 0.5
+    },
+    rebuildSection: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '12px',
+      width: '100%'
+    }
+  };
+
+  // SVG Icons
+  const CaretLeftIcon = () => (
+    <svg width="14" height="8" viewBox="0 0 14 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 1L7 7L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const TrashIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 4H14M12.6667 4V13.3333C12.6667 14 12 14.6667 11.3333 14.6667H4.66667C4 14.6667 3.33333 14 3.33333 13.3333V4M5.33333 4V2.66667C5.33333 2 6 1.33333 6.66667 1.33333H9.33333C10 1.33333 10.6667 2 10.6667 2.66667V4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const isButtonDisabled = !newPat.trim() || isSaving;
+
   return (
-    <Container space="small">
-      <VerticalSpace space="large" />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text>
-          <div class="text-2xl font-bold">Settings</div>
-        </Text>
-        <Button onClick={onBack} secondary>
-          Back
-        </Button>
+    <div style={styles.container}>
+      {/* Header */}
+      <div style={styles.heading}>
+        <button style={styles.backButton} onClick={onBack} aria-label="Back">
+          <CaretLeftIcon />
+        </button>
+        <p style={styles.headerText}>Settings</p>
       </div>
-      <VerticalSpace space="medium" />
 
-      <Text>
-        <Bold>Personal Access Token</Bold>
-      </Text>
-      <VerticalSpace space="small" />
-      <Muted>Your token is stored securely and used to fetch comments and activity data.</Muted>
+      {/* Personal Access Token Section */}
+      <div style={styles.section}>
+        <div style={styles.field}>
+          <p style={styles.fieldLabel}>Personal Access Token</p>
 
-      <VerticalSpace space="medium" />
-      <Text>
-        <Bold>Update Token</Bold>
-      </Text>
-      <VerticalSpace space="small" />
-      <Textbox
-        value={newPat}
-        onValueInput={setNewPat}
-        placeholder="Enter new token"
-        password
-        disabled={isUpdating || isRemoving}
-      />
-      <VerticalSpace space="small" />
-      <Button onClick={handleUpdatePat} fullWidth disabled={isUpdating || isRemoving}>
-        {isUpdating ? 'Updating...' : 'Update Token'}
-      </Button>
-
-      <VerticalSpace space="medium" />
-      <Text>
-        <Bold>Remove Token</Bold>
-      </Text>
-      <VerticalSpace space="small" />
-      <Muted>
-        Removing your token will disable comment and activity tracking. You'll need to re-enter it to use these features.
-      </Muted>
-      <VerticalSpace space="small" />
-      <Button onClick={handleRemovePat} fullWidth secondary danger disabled={isUpdating || isRemoving}>
-        {isRemoving ? 'Removing...' : 'Remove Token'}
-      </Button>
-
-      <VerticalSpace space="medium" />
-      <Text>
-        <Bold>Rebuild Changelog</Bold>
-      </Text>
-      <VerticalSpace space="small" />
-      <Muted>
-        Rebuild all changelog entries on the canvas from stored data. Use this if entries were accidentally deleted.
-      </Muted>
-      <VerticalSpace space="small" />
-      <Button onClick={handleRebuildChangelog} fullWidth disabled={isUpdating || isRemoving || isRebuilding}>
-        {isRebuilding ? 'Rebuilding...' : 'Rebuild Changelog'}
-      </Button>
-
-      {message && (
-        <>
-          <VerticalSpace space="medium" />
-          <Text>
-            <div style={{ color: messageType === 'error' ? 'var(--color-red)' : 'var(--color-green)' }}>
-              {message}
+          {hasToken ? (
+            // Show saved message with delete button
+            <div style={styles.savedMessage}>
+              <p style={styles.savedText}>Your token has been saved</p>
+              <button
+                style={styles.trashButton}
+                onClick={handleRemovePat}
+                disabled={isRemoving}
+                aria-label="Remove token"
+              >
+                <TrashIcon />
+              </button>
             </div>
-          </Text>
-        </>
-      )}
-    </Container>
+          ) : (
+            // Show input field with save button
+            <>
+              <input
+                type="password"
+                value={newPat}
+                onInput={(e) => setNewPat((e.target as HTMLInputElement).value)}
+                placeholder="Enter your personal access token"
+                disabled={isSaving}
+                style={{
+                  ...styles.fieldInput,
+                  opacity: newPat ? 1 : 0.5
+                }}
+              />
+              <p style={styles.caption}>
+                Your token is stored securely and used to fetch comments and activity data.
+              </p>
+            </>
+          )}
+        </div>
+
+        {!hasToken && (
+          <button
+            style={isButtonDisabled ? styles.buttonDisabled : styles.button}
+            onClick={handleSavePat}
+            disabled={isButtonDisabled}
+          >
+            {isSaving ? 'Saving...' : 'Save Token'}
+          </button>
+        )}
+      </div>
+
+      {/* Rebuild Changelog Section */}
+      <div style={styles.rebuildSection}>
+        <p style={styles.fieldLabel}>Rebuild Changelog</p>
+        <p style={styles.caption}>
+          Rebuild all changelog entries on the canvas from stored data. Use this if entries were accidentally deleted.
+        </p>
+        <button
+          style={styles.button}
+          onClick={handleRebuildChangelog}
+          disabled={isRebuilding}
+        >
+          {isRebuilding ? 'Rebuilding...' : 'Rebuild Changelog'}
+        </button>
+      </div>
+    </div>
   );
 }
 
