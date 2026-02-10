@@ -174,13 +174,21 @@ export interface HistogramColors {
 /**
  * Get histogram colors based on theme
  *
+ * Colors are optimized to work on both light and dark backgrounds:
+ * - Feedback: #0885fe (blue) - matches Figma design
+ * - Nodes Changed: #ff6800 (orange) - matches Figma design
+ * - Primary text: #eee (light) for dark theme, #333 (dark) for light theme
+ * - Secondary text: #ccc (light) for dark theme, #777 (dark) for light theme
+ *
  * @param themeColors - Theme colors from detectTheme
  * @returns Histogram-specific colors
  */
 export function getHistogramColors(themeColors: import('./theme').ThemeColors): HistogramColors {
+  // Use theme-specific text colors, but keep bar colors consistent
+  // across themes for brand consistency
   return {
-    feedback: themeColors.accent, // Blue from theme
-    nodesDelta: { r: 1, g: 0.6, b: 0.2 }, // Orange
+    feedback: { r: 0.031, g: 0.522, b: 0.996 }, // #0885fe
+    nodesDelta: { r: 1, g: 0.408, b: 0 }, // #ff6800
     text: themeColors.text,
     textSecondary: themeColors.textSecondary,
   };

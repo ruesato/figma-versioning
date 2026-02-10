@@ -65,8 +65,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         surface: { r: 0.15, g: 0.15, b: 0.15 },              // Slightly lighter
         headerBackground: { r: 0.18, g: 0.18, b: 0.18 },     // Darker header
         border: { r: 0.25, g: 0.25, b: 0.25 },               // Medium-dark gray
-        text: { r: 0.95, g: 0.95, b: 0.95 },                 // Near white
-        textSecondary: { r: 0.6, g: 0.6, b: 0.6 },           // Medium-light gray
+        text: { r: 0.933, g: 0.933, b: 0.933 },              // #eee (matches histogram design)
+        textSecondary: { r: 0.8, g: 0.8, b: 0.8 },           // #ccc (matches histogram design)
         textMuted: { r: 0.5, g: 0.5, b: 0.5 },               // Muted gray
         accent: { r: 0.4, g: 0.6, b: 1 },                    // Lighter blue
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
