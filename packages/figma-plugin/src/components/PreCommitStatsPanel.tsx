@@ -178,17 +178,17 @@ export function PreCommitStatsPanel() {
         </div>
       </div>
 
-      {/* Refresh button below header */}
-      <button
-        style={styles.refreshButton}
-        onClick={refreshStats}
-      >
-        ↻ Refresh
-      </button>
-
       {/* Collapsible content */}
       {isExpanded && (
         <>
+          {/* Refresh button */}
+          <button
+            style={styles.refreshButton}
+            onClick={refreshStats}
+          >
+            ↻ Refresh
+          </button>
+
           {/* Page Changes Section */}
           {stats.pageChanges.length > 0 && (
         <div style={styles.section}>
