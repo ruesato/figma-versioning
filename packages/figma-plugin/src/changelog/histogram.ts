@@ -419,9 +419,9 @@ export async function renderHistogramOnChangelogPage(
   await loadInterFont();
 
   // Get theme colors
-  const { detectTheme, getThemeColors } = await import('./theme');
-  const theme = detectTheme();
-  const themeColors = getThemeColors(theme);
+  // Note: Force dark theme for histogram as the design is optimized for dark backgrounds
+  const { getThemeColors } = await import('./theme');
+  const themeColors = getThemeColors('dark');
   const histogramColors = getHistogramColors(themeColors);
 
   // Set default config
