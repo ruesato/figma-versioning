@@ -83,11 +83,18 @@ export function PreCommitStatsPanel() {
       cursor: 'pointer',
       userSelect: 'none' as const
     },
-    headerLeft: {
+    headerContent: {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
       flex: 1
+    },
+    header: {
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '14px',
+      color: 'white',
+      margin: 0
     },
     caret: {
       display: 'flex',
@@ -97,14 +104,9 @@ export function PreCommitStatsPanel() {
       height: '16px',
       color: 'white',
       transition: 'transform 0.2s ease',
-      transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)'
-    },
-    header: {
-      fontFamily: 'Inter, sans-serif',
-      fontWeight: 600,
-      fontSize: '14px',
-      color: 'white',
-      margin: 0
+      transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+      flexShrink: 0,
+      cursor: 'pointer'
     },
     refreshButton: {
       background: 'none',
@@ -113,8 +115,8 @@ export function PreCommitStatsPanel() {
       cursor: 'pointer',
       fontFamily: 'Inter, sans-serif',
       fontSize: '12px',
-      padding: '4px 8px',
-      borderRadius: '4px'
+      padding: 0,
+      textAlign: 'left' as const
     } as const,
     section: {
       display: 'flex',
@@ -166,24 +168,23 @@ export function PreCommitStatsPanel() {
   return (
     <div style={styles.container}>
       <div style={styles.headerRow} onClick={toggleExpanded}>
-        <div style={styles.headerLeft}>
-          <div style={styles.caret}>
-            <CaretIcon />
-          </div>
+        <div style={styles.headerContent}>
           <p style={styles.header}>
             {totalChanges} change{totalChanges !== 1 ? 's' : ''} since last commit
           </p>
         </div>
-        <button
-          style={styles.refreshButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            refreshStats();
-          }}
-        >
-          ↻ Refresh
-        </button>
+        <div style={styles.caret}>
+          <CaretIcon />
+        </div>
       </div>
+
+      {/* Refresh button below header */}
+      <button
+        style={styles.refreshButton}
+        onClick={refreshStats}
+      >
+        ↻ Refresh
+      </button>
 
       {/* Collapsible content */}
       {isExpanded && (
@@ -212,7 +213,7 @@ export function PreCommitStatsPanel() {
       {/* Feedback Section */}
       {(stats.newCommentsCount > 0 || stats.newAnnotationsCount > 0) && (
         <div style={styles.section}>
-          <p style={styles.sectionTitle}>💬 Feedback</p>
+          <p style={styles.sectionTitle}>Feedback</p>
           <ul style={styles.list}>
             {stats.newCommentsCount > 0 && (
               <li style={styles.listItem}>
@@ -228,12 +229,6 @@ export function PreCommitStatsPanel() {
         </div>
       )}
 
-      {/* Warning if real-time tracking wasn't active */}
-      {!stats.hasRealTimeTracking && (
-        <p style={styles.warning}>
-          Page changes not tracked (plugin wasn't running). Only showing comments and annotations.
-        </p>
-      )}
         </>
       )}
     </div>
