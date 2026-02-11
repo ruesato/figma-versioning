@@ -2,9 +2,9 @@
  * Trend Visualization Module
  *
  * Creates visual charts and graphs for trend analysis data:
- * - Line chart: File size (node count) over time
- * - Bar chart: Most active nodes (last 10 commits)
- * - List view: High-churn nodes (top 5)
+ * - Line chart: File size (layer count) over time
+ * - Bar chart: Most active layers (last 10 commits)
+ * - List view: High-churn layers (top 5)
  * - Timeline: Period classification (expansion/cleanup/stable)
  */
 
@@ -25,7 +25,7 @@ import { getOrCreateChangelogPage } from './page-manager';
 export interface TrendVisualizationConfig {
   /** Number of recent commits to analyze (default: 10) */
   recentCommits?: number;
-  /** Number of top active nodes to display (default: 5) */
+  /** Number of top active layers to display (default: 5) */
   topNodesCount?: number;
   /** Width of visualization frame (default: 800) */
   width?: number;
@@ -74,6 +74,22 @@ function getTrendColors(theme: 'light' | 'dark' | 'figjam'): TrendColors {
     cardBackground: themeColors.headerBackground,
     border: themeColors.border,
   };
+}
+
+/**
+ * Get layer name from node ID
+ * Returns the layer name if it exists, or a fallback string if deleted/not found
+ */
+function getLayerName(nodeId: string): string {
+  try {
+    const node = figma.getNodeById(nodeId);
+    if (node && 'name' in node) {
+      return node.name;
+    }
+    return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
+  } catch (error) {
+    return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
+  }
 }
 
 /**
@@ -132,7 +148,7 @@ function createCard(title: string, colors: TrendColors, width: number): FrameNod
 /**
  * Create line chart for file growth over time
  *
- * Displays a simple line chart showing node count changes across commits.
+ * Displays a simple line chart showing layer count changes across commits.
  * Uses connected points with labels for first, middle, and last commits.
  */
 function createFileGrowthChart(
@@ -265,8 +281,8 @@ function createFileGrowthChart(
 
   const stats = [
     { label: 'Trend', value: analysis.trend, color: trendColor },
-    { label: 'Current', value: `${analysis.currentNodes} nodes`, color: colors.text },
-    { label: 'Change', value: `${analysis.totalGrowth >= 0 ? '+' : ''}${analysis.totalGrowth}`, color: colors.text },
+    { label: 'Current', value: `${analysis.currentNodes} layers`, color: colors.text },
+    { label: 'Change', value: `${analysis.totalGrowth >= 0 ? '+' : ''}${analysis.totalGrowth} layers`, color: colors.text },
     { label: 'Avg Rate', value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${analysis.averageGrowthRate}/commit`, color: colors.textSecondary },
   ];
 
@@ -293,9 +309,9 @@ function createFileGrowthChart(
 }
 
 /**
- * Create bar chart for most active nodes
+ * Create bar chart for most active layers
  *
- * Shows horizontal bars for top N nodes by activity count.
+ * Shows horizontal bars for top N layers by activity count.
  */
 function createMostActiveNodesChart(
   hotspots: ActivityHotspot[],
@@ -303,7 +319,7 @@ function createMostActiveNodesChart(
   colors: TrendColors,
   width: number
 ): FrameNode {
-  const card = createCard(`Top ${topCount} Most Active Nodes`, colors, width);
+  const card = createCard(`Top ${topCount} Most Active Layers`, colors, width);
 
   if (hotspots.length === 0) {
     const emptyText = createText('No activity data available', 12, 'Regular', colors.textMuted);
@@ -335,9 +351,10 @@ function createMostActiveNodesChart(
     barFrame.itemSpacing = 4;
     barFrame.fills = [];
 
-    // Node ID label
+    // Layer name label
+    const layerName = getLayerName(hotspot.nodeId);
     const nodeLabel = createText(
-      `Node: ${hotspot.nodeId.substring(0, 12)}...`,
+      layerName,
       11,
       'Medium',
       colors.text
@@ -383,9 +400,9 @@ function createMostActiveNodesChart(
 }
 
 /**
- * Create list view for high-churn nodes
+ * Create list view for high-churn layers
  *
- * Shows a simple list of top nodes with their activity counts.
+ * Shows a simple list of top layers with their activity counts.
  */
 function createHighChurnList(
   hotspots: ActivityHotspot[],
@@ -393,7 +410,7 @@ function createHighChurnList(
   colors: TrendColors,
   width: number
 ): FrameNode {
-  const card = createCard(`Top ${topCount} High-Churn Nodes`, colors, width);
+  const card = createCard(`Top ${topCount} High-Churn Layers`, colors, width);
 
   if (hotspots.length === 0) {
     const emptyText = createText('No activity data available', 12, 'Regular', colors.textMuted);
@@ -441,7 +458,7 @@ function createHighChurnList(
     badge.appendChild(rankText);
     itemFrame.appendChild(badge);
 
-    // Node info
+    // Layer info
     const infoFrame = figma.createFrame();
     infoFrame.name = 'Info';
     infoFrame.layoutMode = 'VERTICAL';
@@ -450,7 +467,8 @@ function createHighChurnList(
     infoFrame.itemSpacing = 2;
     infoFrame.fills = [];
 
-    const nodeText = createText(hotspot.nodeId, 12, 'Medium', colors.text);
+    const layerName = getLayerName(hotspot.nodeId);
+    const nodeText = createText(layerName, 12, 'Medium', colors.text);
     const statsText = createText(
       `${hotspot.activityCount} activities • ${hotspot.commitCount} commits`,
       10,
