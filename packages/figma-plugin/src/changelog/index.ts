@@ -38,3 +38,20 @@ export type { HistogramBar, HistogramConfig, HistogramColors } from './histogram
 // Property utilities exports
 export { getPropertyLabel, getSupportedPropertyNames, hasPropertyLabel } from './property-labels';
 export { formatPropertyValue, formatProperty } from './property-formatter';
+
+// Analytics exports
+export {
+  analyzeFileGrowth,
+  analyzeFrameChurn,
+  classifyPeriods,
+  analyzeMostActiveNodes,
+  computeChangelogAnalytics,
+} from './analytics';
+export type {
+  FileGrowthAnalysis,
+  FrameChurnAnalysis,
+  PeriodClassification,
+  ActivityHotspot,
+  MostActiveNodesAnalysis,
+  ChangelogAnalytics,
+} from './analytics';
