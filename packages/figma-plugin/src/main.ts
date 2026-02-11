@@ -1059,14 +1059,15 @@ export default function () {
         commit.changelogFrameId = entryFrame.id;
         await saveCommit(commit);
 
-        // Render/update histogram with all commits
+        // Render/update histogram and trend insights with all commits
         try {
           const allCommits = await loadCommits();
-          const { renderHistogramOnChangelogPage } = await import('./changelog');
+          const { renderHistogramOnChangelogPage, renderTrendInsightsOnChangelogPage } = await import('./changelog');
           await renderHistogramOnChangelogPage(allCommits);
-        } catch (histogramError) {
-          console.error('Failed to render histogram:', histogramError);
-          // Don't notify user - histogram is secondary
+          await renderTrendInsightsOnChangelogPage(allCommits);
+        } catch (visualizationError) {
+          console.error('Failed to render visualizations:', visualizationError);
+          // Don't notify user - visualizations are secondary
         }
       } catch (renderError) {
         // Log error but don't fail the entire commit
@@ -1167,13 +1168,15 @@ export default function () {
 
       console.log(`[Rebuild] Updated ${Object.keys(frameIdMap).length} commit frame IDs in storage`);
 
-      // Regenerate histogram
+      // Regenerate histogram and trend insights
       try {
+        const { renderTrendInsightsOnChangelogPage } = await import('./changelog');
         await renderHistogramOnChangelogPage(updatedCommits);
-        console.log('[Rebuild] Histogram regenerated successfully');
-      } catch (histogramError) {
-        console.error('[Rebuild] Failed to regenerate histogram:', histogramError);
-        // Don't fail the entire rebuild for histogram errors
+        await renderTrendInsightsOnChangelogPage(updatedCommits);
+        console.log('[Rebuild] Visualizations regenerated successfully');
+      } catch (visualizationError) {
+        console.error('[Rebuild] Failed to regenerate visualizations:', visualizationError);
+        // Don't fail the entire rebuild for visualization errors
       }
 
       // Notify success
