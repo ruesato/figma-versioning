@@ -305,6 +305,66 @@ A: There's no hard limit. The plugin uses chunked storage to handle unlimited ve
 
 A: Yes! Each person's plugin instance manages versions independently. However, since versions are saved to Figma's version history, they'll be visible to all collaborators.
 
+## Development
+
+### Building
+
+Build all packages:
+```bash
+pnpm build
+```
+
+Build in watch mode for development:
+```bash
+pnpm dev
+```
+
+### Testing
+
+Run all tests:
+```bash
+pnpm test
+```
+
+Run tests with UI:
+```bash
+pnpm --filter './packages/*' test:ui
+```
+
+### Releases
+
+The project uses GitHub Actions for automated releases.
+
+#### Triggering a Release
+
+**Option 1: Manual Release (Recommended)**
+
+1. Go to the **Actions** tab in GitHub
+2. Select the **Release** workflow
+3. Click **Run workflow**
+4. Enter the version number (e.g., `1.0.0`)
+5. The workflow will:
+   - Run tests and type checking
+   - Build all packages
+   - Create a GitHub release with the version tag
+   - Upload the Figma plugin as a release asset
+
+**Option 2: Tag-based Release**
+
+Create and push a version tag:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The release workflow will trigger automatically.
+
+#### Release Artifacts
+
+Each release includes:
+- **figma-versioning-plugin-{version}.zip** - Ready-to-install Figma plugin
+- Automatic release notes generated from commits
+
 ## Roadmap
 
 - [ ] Browser compatibility
