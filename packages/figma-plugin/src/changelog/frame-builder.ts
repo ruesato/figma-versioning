@@ -494,6 +494,12 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
         const propertyRow = createPropertyRow(label, formattedValue, colors);
         annotationFrame.appendChild(propertyRow);
       }
+
+      // Display category if present (not a node property, stored in annotation metadata)
+      if (annotationProps.category && typeof annotationProps.category === 'string') {
+        const categoryRow = createPropertyRow('Category', annotationProps.category, colors);
+        annotationFrame.appendChild(categoryRow);
+      }
     } else {
       // Fallback: display top-level properties (skip metadata fields)
       for (const [propertyName, propertyValue] of Object.entries(annotationProps)) {
