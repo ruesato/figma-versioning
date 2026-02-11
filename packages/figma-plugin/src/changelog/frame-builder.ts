@@ -504,7 +504,7 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
         if (propertyName === 'labelMarkdown' || propertyName === 'label' ||
             propertyName === 'properties' || propertyName === 'nodeId' ||
             propertyName === 'isPinned' || propertyName === 'categoryId' ||
-            propertyName === 'nodeName' || propertyName === 'category') {
+            propertyName === 'nodeName') {
           continue;
         }
 
