@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm run build:css && npm run build:js",
     "build:css": "tailwindcss --input ./src/input.css --output ./src/output.css",
-    "build:js": "rm -rf dist && build-figma-plugin --typecheck --minify --output dist && if [ -d dist/build ]; then mv dist/build/* dist/ && rmdir dist/build; fi && sed -i '' 's/build\\/main.js/main.js/g; s/build\\/ui.js/ui.js/g' dist/manifest.json",
+    "build:js": "rm -rf dist && build-figma-plugin --typecheck --minify --output dist && if [ -d dist/build ]; then mv dist/build/* dist/ && rmdir dist/build; fi && node scripts/fix-manifest.js",
     "dev": "npm run build:css && concurrently npm:watch:css npm:watch:js",
     "watch:css": "tailwindcss --input ./src/input.css --output ./src/output.css --watch",
     "watch:js": "build-figma-plugin --typecheck --watch",
