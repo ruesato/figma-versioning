@@ -458,15 +458,32 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
     const pinnedProperties = annotationProps.properties as Array<{ type: string; [key: string]: unknown }> | undefined;
 
     if (Array.isArray(pinnedProperties) && pinnedProperties.length > 0) {
+      // Get the actual node to read property values
+      let node: SceneNode | null = null;
+      try {
+        node = figma.getNodeById(annotation.nodeId) as SceneNode;
+      } catch (error) {
+        console.warn(`[Annotation] Could not find node ${annotation.nodeId}`, error);
+      }
+
       // Display properties from the pinned properties array
       for (const prop of pinnedProperties) {
         if (!prop || !prop.type) continue;
 
         const propertyName = prop.type;
-        const propertyValue = 'value' in prop ? prop.value : prop;
+
+        // Read the actual property value from the node
+        // AnnotationProperty only has 'type', not the value - we must read from the node
+        let propertyValue: unknown = null;
+        if (node && propertyName in node) {
+          propertyValue = (node as any)[propertyName];
+        }
 
         // Skip null/undefined values
-        if (propertyValue === null || propertyValue === undefined) continue;
+        if (propertyValue === null || propertyValue === undefined) {
+          console.log(`[Annotation] Property ${propertyName} not found on node or is null`);
+          continue;
+        }
 
         const label = getPropertyLabel(propertyName);
         const formattedValue = formatPropertyValue(propertyValue, propertyName);
