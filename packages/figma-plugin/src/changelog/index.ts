@@ -55,3 +55,10 @@ export type {
   MostActiveNodesAnalysis,
   ChangelogAnalytics,
 } from './analytics';
+
+// Trend Visualization exports
+export {
+  createTrendInsightsSection,
+  renderTrendInsightsOnChangelogPage,
+} from './trend-visualization';
+export type { TrendVisualizationConfig } from './trend-visualization';
