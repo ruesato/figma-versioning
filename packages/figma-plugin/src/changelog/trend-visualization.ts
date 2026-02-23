@@ -77,14 +77,25 @@ function getTrendColors(theme: 'light' | 'dark' | 'figjam'): TrendColors {
 }
 
 /**
- * Get layer name from node ID
- * Returns the layer name if it exists, or a fallback string if deleted/not found
+ * Get layer name from node ID, prefixed with the page name
+ * Returns "[pageName] > [layerName]" if found, or a fallback string if deleted/not found
  */
 function getLayerName(nodeId: string): string {
   try {
     const node = figma.getNodeById(nodeId);
     if (node && 'name' in node) {
-      return node.name;
+      // Walk up the parent chain to find the containing page
+      let current: BaseNode | null = node;
+      let pageName: string | null = null;
+      while (current && current.parent) {
+        current = current.parent;
+        if (current.type === 'PAGE') {
+          pageName = current.name;
+          break;
+        }
+      }
+
+      return pageName ? `${pageName} > ${node.name}` : node.name;
     }
     return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
   } catch (error) {
@@ -683,14 +694,6 @@ export async function createTrendInsightsSection(
 
   const periodTimeline = createPeriodTimeline(analytics.periodClassification, colors, fullConfig.width - 40);
   container.appendChild(periodTimeline);
-
-  const mostActiveChart = createMostActiveNodesChart(
-    analytics.activeNodes.hotspots,
-    fullConfig.topNodesCount,
-    colors,
-    fullConfig.width - 40
-  );
-  container.appendChild(mostActiveChart);
 
   const highChurnList = createHighChurnList(
     analytics.activeNodes.hotspots,
