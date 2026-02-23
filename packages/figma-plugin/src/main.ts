@@ -1,6 +1,6 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
-import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta, PreCommitStats, PageChangeStats } from '@figma-versioning/core';
+import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta, PreCommitStats, PageChangeStats, DevStatusChange, LayerDevStatus } from '@figma-versioning/core';
 import { renderChangelogEntry, setupHistogramInteractivity } from './changelog';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
@@ -70,6 +70,100 @@ function getPageIdForNode(nodeId: string): string | null {
 function resetChangeTracking(): void {
   changeTrackingStore.clear();
   console.log('[ChangeTracking] Store reset');
+}
+
+interface DevStatusNodeInfo {
+  status: LayerDevStatus;
+  pageId: string;
+  pageName: string;
+  nodeName: string;
+}
+
+/**
+ * Recursively collect dev statuses from a node and its children
+ */
+function collectDevStatusesFromNode(
+  node: SceneNode,
+  pageId: string,
+  pageName: string,
+  result: Record<string, DevStatusNodeInfo>
+): void {
+  if ('devStatus' in node && node.devStatus) {
+    const rawStatus = node.devStatus as { type: string } | null;
+    if (rawStatus && (rawStatus.type === 'READY_FOR_DEV' || rawStatus.type === 'COMPLETED')) {
+      result[node.id] = {
+        status: rawStatus.type as LayerDevStatus,
+        pageId,
+        pageName,
+        nodeName: node.name
+      };
+    }
+  }
+
+  if ('children' in node) {
+    for (const child of node.children) {
+      collectDevStatusesFromNode(child, pageId, pageName, result);
+    }
+  }
+}
+
+/**
+ * Scan all pages and collect every layer that has a dev status set
+ */
+function collectAllDevStatuses(): Record<string, DevStatusNodeInfo> {
+  const result: Record<string, DevStatusNodeInfo> = {};
+
+  for (const page of figma.root.children) {
+    for (const node of page.children) {
+      collectDevStatusesFromNode(node, page.id, page.name, result);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Compute dev status changes by diffing current statuses against the previous commit's snapshot
+ */
+function computeDevStatusChanges(
+  current: Record<string, DevStatusNodeInfo>,
+  previousSnapshot: Record<string, { status: LayerDevStatus; pageId: string; pageName: string; nodeName: string }> | undefined
+): DevStatusChange[] {
+  const changes: DevStatusChange[] = [];
+  const prev = previousSnapshot || {};
+
+  // New or changed statuses
+  for (const [nodeId, info] of Object.entries(current)) {
+    const prevEntry = prev[nodeId];
+    const prevStatus: LayerDevStatus | null = prevEntry ? prevEntry.status : null;
+
+    if (prevStatus !== info.status) {
+      changes.push({
+        pageId: info.pageId,
+        pageName: info.pageName,
+        nodeId,
+        layerName: info.nodeName,
+        previousStatus: prevStatus,
+        newStatus: info.status
+      });
+    }
+  }
+
+  // Statuses that were cleared (in previous snapshot but not in current)
+  for (const [nodeId, prevEntry] of Object.entries(prev)) {
+    if (!(nodeId in current)) {
+      changes.push({
+        pageId: prevEntry.pageId,
+        pageName: prevEntry.pageName,
+        nodeId,
+        layerName: prevEntry.nodeName,
+        previousStatus: prevEntry.status,
+        newStatus: null
+      });
+    }
+  }
+
+  return changes;
 }
 
 /**
@@ -1008,6 +1102,15 @@ export default function () {
       const metrics = collectMetrics(feedbackCount);
       console.log(`[Version] Feedback count: ${feedbackCount} (${comments.length} comments, ${annotations.length} annotations)`);
 
+      // Collect dev status changes by diffing current state against previous commit's snapshot
+      const currentDevStatuses = collectAllDevStatuses();
+      const previousSnapshot = existingCommits.length > 0 ? existingCommits[0].devStatusSnapshot : undefined;
+      const devStatusChanges = computeDevStatusChanges(currentDevStatuses, previousSnapshot);
+      const devStatusSnapshot = Object.fromEntries(
+        Object.entries(currentDevStatuses).map(([k, v]) => [k, { status: v.status, pageId: v.pageId, pageName: v.pageName, nodeName: v.nodeName }])
+      );
+      console.log(`[Version] Dev status changes: ${devStatusChanges.length}`);
+
       // Create commit object
       const now = new Date();
       console.log(`[Version] Creating new commit at:`, now.toISOString());
@@ -1023,7 +1126,9 @@ export default function () {
         timestamp: now,
         comments,
         annotations,
-        metrics
+        metrics,
+        devStatusChanges,
+        devStatusSnapshot
       };
 
       console.log(`[Version] Created commit object with ${comments.length} comments`, {

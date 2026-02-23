@@ -18,6 +18,7 @@ export interface ThemeColors {
   accent: RGB;
   commentBadge: RGB;
   annotationBadge: RGB;
+  devStatusBadge: RGB;
 }
 
 /**
@@ -56,7 +57,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         textMuted: { r: 0.502, g: 0.502, b: 0.502 },         // #808080
         accent: { r: 0.2, g: 0.47, b: 1 },                   // Figma blue
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
-        annotationBadge: { r: 0.204, g: 0.361, b: 0.8 }      // #345ccc blue
+        annotationBadge: { r: 0.204, g: 0.361, b: 0.8 },     // #345ccc blue
+        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 }     // #11a066 green
       };
 
     case 'dark':
@@ -70,7 +72,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         textMuted: { r: 0.5, g: 0.5, b: 0.5 },               // Muted gray
         accent: { r: 0.4, g: 0.6, b: 1 },                    // Lighter blue
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
-        annotationBadge: { r: 0.204, g: 0.361, b: 0.8 }      // #345ccc blue
+        annotationBadge: { r: 0.204, g: 0.361, b: 0.8 },     // #345ccc blue
+        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 }     // #11a066 green
       };
 
     case 'figjam':
@@ -84,7 +87,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         textMuted: { r: 0.5, g: 0.5, b: 0.5 },               // Muted gray
         accent: { r: 0.51, g: 0.35, b: 1 },                  // FigJam purple
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
-        annotationBadge: { r: 0.51, g: 0.35, b: 1 }          // FigJam purple for annotations
+        annotationBadge: { r: 0.51, g: 0.35, b: 1 },         // FigJam purple for annotations
+        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 }     // #11a066 green
       };
   }
 }

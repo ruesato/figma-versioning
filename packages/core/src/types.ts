@@ -39,6 +39,29 @@ export interface Comment {
 }
 
 /**
+ * Dev status value for a layer (from Figma Dev Mode)
+ */
+export type LayerDevStatus = 'READY_FOR_DEV' | 'COMPLETED';
+
+/**
+ * A single layer dev status change captured at commit time
+ */
+export interface DevStatusChange {
+  /** Page ID where this layer lives */
+  pageId: string;
+  /** Page name for display */
+  pageName: string;
+  /** Figma node ID */
+  nodeId: string;
+  /** Layer name for display */
+  layerName: string;
+  /** Previous dev status (null if unset before) */
+  previousStatus: LayerDevStatus | null;
+  /** New dev status (null if status was cleared) */
+  newStatus: LayerDevStatus | null;
+}
+
+/**
  * Dev Mode annotation captured at commit time
  */
 export interface Annotation {
@@ -98,6 +121,14 @@ export interface Commit {
   metrics: CommitMetrics;
   /** Figma frame ID for the changelog entry (optional, for navigation) */
   changelogFrameId?: string;
+  /** Dev status changes captured since the previous commit */
+  devStatusChanges?: DevStatusChange[];
+  /**
+   * Snapshot of all layer dev statuses at commit time.
+   * Used to compute changes for the next commit.
+   * Maps nodeId → { status, pageId, pageName, nodeName }
+   */
+  devStatusSnapshot?: Record<string, { status: LayerDevStatus; pageId: string; pageName: string; nodeName: string }>;
 }
 
 /**

@@ -5,7 +5,7 @@
  * Frame structure: Header, Message, Comments (conditional), Annotations (conditional)
  */
 
-import type { Commit } from '@figma-versioning/core';
+import type { Commit, DevStatusChange, LayerDevStatus } from '@figma-versioning/core';
 import { detectTheme, getThemeColors } from './theme';
 import { getPropertyLabel } from './property-labels';
 import { formatPropertyValue } from './property-formatter';
@@ -564,6 +564,105 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
 }
 
 /**
+ * Get a human-readable label for a dev status change
+ */
+function formatDevStatusChange(previousStatus: LayerDevStatus | null, newStatus: LayerDevStatus | null): string {
+  if (newStatus === 'READY_FOR_DEV') {
+    return 'Ready for Dev';
+  }
+  if (newStatus === 'COMPLETED') {
+    return 'Completed';
+  }
+  if (previousStatus === 'READY_FOR_DEV') {
+    return 'Removed from Ready for Dev';
+  }
+  if (previousStatus === 'COMPLETED') {
+    return 'Removed from Completed';
+  }
+  return 'Status changed';
+}
+
+/**
+ * Get the indicator color for a dev status change
+ */
+function getDevStatusColor(change: DevStatusChange, colors: ReturnType<typeof getThemeColors>): RGB {
+  if (change.newStatus === 'READY_FOR_DEV' || change.newStatus === 'COMPLETED') {
+    return colors.devStatusBadge;
+  }
+  // Removed status — use muted color
+  return colors.textMuted;
+}
+
+/**
+ * Create the dev status changes section
+ */
+function createDevStatusSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
+  if (!commit.devStatusChanges || commit.devStatusChanges.length === 0) {
+    return null;
+  }
+
+  const section = figma.createFrame();
+  section.name = 'Dev Status';
+  section.layoutMode = 'VERTICAL';
+  section.primaryAxisSizingMode = 'AUTO';
+  section.counterAxisSizingMode = 'FIXED';
+  section.resize(FRAME_WIDTH, section.height);
+  section.itemSpacing = 8;
+  section.paddingLeft = PADDING;
+  section.paddingRight = PADDING;
+  section.fills = [];
+
+  // Section header with green badge
+  const sectionHeader = createSectionHeader('Dev Status', commit.devStatusChanges.length, colors.devStatusBadge, colors);
+  section.appendChild(sectionHeader);
+
+  // One row per change: "• [pageName] / [layerName]: [statusChange]"
+  for (const change of commit.devStatusChanges) {
+    const statusLabel = formatDevStatusChange(change.previousStatus, change.newStatus);
+    const indicatorColor = getDevStatusColor(change, colors);
+
+    const row = figma.createFrame();
+    row.name = 'Dev Status Change';
+    row.layoutMode = 'HORIZONTAL';
+    row.primaryAxisSizingMode = 'FIXED';
+    row.counterAxisSizingMode = 'AUTO';
+    row.resize(FRAME_WIDTH - PADDING * 2, row.height);
+    row.itemSpacing = 6;
+    row.fills = [];
+    row.counterAxisAlignItems = 'CENTER';
+
+    // Colored bullet
+    const bullet = createText('•', 12, 'Bold', indicatorColor);
+    row.appendChild(bullet);
+
+    // "[pageName] / [layerName]: [statusLabel]"
+    const rowText = createText(
+      `${change.pageName} / ${change.layerName}: ${statusLabel}`,
+      12,
+      'Regular',
+      colors.text
+    );
+    rowText.textAutoResize = 'HEIGHT';
+    rowText.layoutGrow = 1;
+
+    // Link to the layer if it still exists
+    try {
+      rowText.hyperlink = { type: 'NODE', value: change.nodeId };
+      rowText.textDecoration = 'NONE';
+    } catch {
+      // Node may no longer exist — no hyperlink
+    }
+
+    row.appendChild(rowText);
+    row.locked = true;
+    section.appendChild(row);
+  }
+
+  section.locked = true;
+  return section;
+}
+
+/**
  * Create a complete commit entry frame with all sections
  *
  * @param commit - The commit data to render
@@ -613,6 +712,12 @@ export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode>
   const annotations = createAnnotationsSection(commit, colors);
   if (annotations) {
     container.appendChild(annotations);
+  }
+
+  // Add dev status changes section (if any)
+  const devStatus = createDevStatusSection(commit, colors);
+  if (devStatus) {
+    container.appendChild(devStatus);
   }
 
   // Lock the entire frame
