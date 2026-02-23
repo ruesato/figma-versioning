@@ -135,9 +135,9 @@ function createSection(name: string, width: number, spacing: number, borderColor
   const section = figma.createFrame();
   section.name = name;
   section.layoutMode = 'VERTICAL';
+  section.resize(width, 100);
   section.primaryAxisSizingMode = 'AUTO';
   section.counterAxisSizingMode = 'FIXED';
-  section.resize(width, 100);
   section.itemSpacing = spacing;
   section.paddingTop = 24;
   section.paddingBottom = 24;
@@ -209,9 +209,9 @@ function createFileGrowthChart(
   const chartWrapper = figma.createFrame();
   chartWrapper.name = 'chart';
   chartWrapper.layoutMode = 'VERTICAL';
+  chartWrapper.resize(contentWidth, 100);
   chartWrapper.primaryAxisSizingMode = 'AUTO';
   chartWrapper.counterAxisSizingMode = 'FIXED';
-  chartWrapper.resize(contentWidth, 100);
   chartWrapper.itemSpacing = 12;
   chartWrapper.fills = [];
 
@@ -219,9 +219,9 @@ function createFileGrowthChart(
   const chartFrame = figma.createFrame();
   chartFrame.name = 'Chart';
   chartFrame.layoutMode = 'VERTICAL';
+  chartFrame.resize(contentWidth, chartHeight);
   chartFrame.primaryAxisSizingMode = 'AUTO';
   chartFrame.counterAxisSizingMode = 'FIXED';
-  chartFrame.resize(contentWidth, chartHeight);
   chartFrame.fills = [];
 
   const nodeValues = sorted.map((c) => c.metrics.totalNodes);
@@ -392,9 +392,9 @@ function createPeriodTimeline(
   const timelineFrame = figma.createFrame();
   timelineFrame.name = 'Timeline';
   timelineFrame.layoutMode = 'VERTICAL';
+  timelineFrame.resize(contentWidth, 80);
   timelineFrame.primaryAxisSizingMode = 'AUTO';
   timelineFrame.counterAxisSizingMode = 'FIXED';
-  timelineFrame.resize(contentWidth, 80);
   timelineFrame.itemSpacing = 12;
   timelineFrame.fills = [];
 
@@ -528,9 +528,9 @@ function createHighChurnList(
   const listFrame = figma.createFrame();
   listFrame.name = 'List';
   listFrame.layoutMode = 'VERTICAL';
+  listFrame.resize(contentWidth, 100);
   listFrame.primaryAxisSizingMode = 'AUTO';
   listFrame.counterAxisSizingMode = 'FIXED';
-  listFrame.resize(contentWidth, 100);
   listFrame.itemSpacing = 16;
   listFrame.fills = [];
 
@@ -623,9 +623,9 @@ export async function createTrendInsightsSection(
   const container = figma.createFrame();
   container.name = 'Trend Insights';
   container.layoutMode = 'VERTICAL';
+  container.resize(fullConfig.width, 100);
   container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'FIXED';
-  container.resize(fullConfig.width, 100);
   container.itemSpacing = 0;
   container.fills = [{ type: 'SOLID', color: colors.background }];
   container.cornerRadius = 8;
@@ -634,9 +634,9 @@ export async function createTrendInsightsSection(
   const header = figma.createFrame();
   header.name = 'header';
   header.layoutMode = 'VERTICAL';
+  header.resize(fullConfig.width, 100);
   header.primaryAxisSizingMode = 'AUTO';
   header.counterAxisSizingMode = 'FIXED';
-  header.resize(fullConfig.width, 100);
   header.paddingTop = 32;
   header.paddingBottom = 12;
   header.paddingLeft = 24;
