@@ -217,7 +217,7 @@ export function clearChangelogContainer(): void {
  */
 export async function rebuildChangelog(
   commits: Commit[],
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (_current: number, _total: number) => void
 ): Promise<Record<string, string>> {
   // Handle empty commits
   if (commits.length === 0) {

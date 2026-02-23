@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { Commit } from '@figma-versioning/core';
+
 import {
   analyzeFileGrowth,
   analyzeFrameChurn,

@@ -161,7 +161,7 @@ function SettingsView({ onBack }: { onBack: () => void }) {
       setHasToken(false);
     });
 
-    const unsubRebuild = on('CHANGELOG_REBUILT', function (data: { success: boolean; count?: number; error?: string }) {
+    const unsubRebuild = on('CHANGELOG_REBUILT', function (_data: { success: boolean; count?: number; error?: string }) {
       setIsRebuilding(false);
     });
 
@@ -454,7 +454,7 @@ function MainView({ onOpenSettings, hasToken }: { onOpenSettings: () => void; ha
   useEffect(() => {
     emit('GET_VERSIONING_MODE');
 
-    const unsubscribe = on('VERSIONING_MODE', function (data: { mode: 'semantic' | 'date-based' }) {
+    const unsubscribe = on('VERSIONING_MODE', function (_data: { mode: 'semantic' | 'date-based' }) {
       // Keep semantic mode as default for the new UI
     });
 

@@ -99,7 +99,7 @@ export function createMockFigmaApi(options: {
         label: `Category ${id}`
       })
     },
-    getNodeById: (id: string) => null
+    getNodeById: (_id: string) => null
   };
 }
 

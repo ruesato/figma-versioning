@@ -96,7 +96,7 @@ function getLayerName(nodeId: string): string {
       return pageName ? `${pageName} / ${node.name}` : node.name;
     }
     return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
-  } catch (error) {
+  } catch {
     return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
   }
 }

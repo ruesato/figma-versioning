@@ -1,4 +1,4 @@
-import { h, Fragment } from 'preact';
+import { h, Fragment } from 'preact'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { useState, useEffect } from 'preact/hooks';
 import { emit, on } from '@create-figma-plugin/utilities';
 import type { PreCommitStats } from '@figma-versioning/core';

@@ -230,7 +230,7 @@ export function formatPropertyValue(value: unknown, propertyName: string): strin
 export function formatProperty(
   propertyName: string,
   value: unknown,
-  getLabel?: (name: string) => string
+  getLabel?: (_name: string) => string
 ): string {
   const label = getLabel ? getLabel(propertyName) : propertyName;
   const formattedValue = formatPropertyValue(value, propertyName);
