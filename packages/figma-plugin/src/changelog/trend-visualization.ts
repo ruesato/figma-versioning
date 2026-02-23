@@ -3,7 +3,6 @@
  *
  * Creates visual charts and graphs for trend analysis data:
  * - Line chart: File size (layer count) over time
- * - Bar chart: Most active layers (last 10 commits)
  * - List view: High-churn layers (top 5)
  * - Timeline: Period classification (expansion/cleanup/stable)
  */
@@ -11,7 +10,6 @@
 import type { Commit } from '@figma-versioning/core';
 import {
   computeChangelogAnalytics,
-  type ChangelogAnalytics,
   type FileGrowthAnalysis,
   type PeriodClassification,
   type ActivityHotspot,
@@ -51,7 +49,7 @@ interface TrendColors {
   textMuted: RGB;
   /** Background colors */
   background: RGB;
-  cardBackground: RGB;
+  headerBackground: RGB;
   border: RGB;
 }
 
@@ -71,14 +69,14 @@ function getTrendColors(theme: 'light' | 'dark' | 'figjam'): TrendColors {
     textSecondary: themeColors.textSecondary,
     textMuted: themeColors.textMuted,
     background: themeColors.background,
-    cardBackground: themeColors.headerBackground,
+    headerBackground: themeColors.headerBackground,
     border: themeColors.border,
   };
 }
 
 /**
  * Get layer name from node ID, prefixed with the page name
- * Returns "[pageName] > [layerName]" if found, or a fallback string if deleted/not found
+ * Returns "[pageName] / [layerName]" if found, or a fallback string if deleted/not found
  */
 function getLayerName(nodeId: string): string {
   try {
@@ -95,7 +93,7 @@ function getLayerName(nodeId: string): string {
         }
       }
 
-      return pageName ? `${pageName} > ${node.name}` : node.name;
+      return pageName ? `${pageName} / ${node.name}` : node.name;
     }
     return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
   } catch (error) {
@@ -130,37 +128,47 @@ function createText(
 }
 
 /**
- * Create a card frame for wrapping visualization sections
+ * Create a flat section frame with 24px padding and no background
+ * Optionally adds a bottom border.
  */
-function createCard(title: string, colors: TrendColors, width: number): FrameNode {
-  const card = figma.createFrame();
-  card.name = title;
-  card.layoutMode = 'VERTICAL';
-  card.primaryAxisSizingMode = 'AUTO';
-  card.counterAxisSizingMode = 'FIXED';
-  card.resize(width, 100);
-  card.itemSpacing = 12;
-  card.paddingTop = 16;
-  card.paddingBottom = 16;
-  card.paddingLeft = 16;
-  card.paddingRight = 16;
-  card.fills = [{ type: 'SOLID', color: colors.cardBackground }];
-  card.cornerRadius = 8;
-  card.strokes = [{ type: 'SOLID', color: colors.border }];
-  card.strokeWeight = 1;
+function createSection(name: string, width: number, spacing: number, borderColor?: RGB): FrameNode {
+  const section = figma.createFrame();
+  section.name = name;
+  section.layoutMode = 'VERTICAL';
+  section.primaryAxisSizingMode = 'AUTO';
+  section.counterAxisSizingMode = 'FIXED';
+  section.resize(width, 100);
+  section.itemSpacing = spacing;
+  section.paddingTop = 24;
+  section.paddingBottom = 24;
+  section.paddingLeft = 24;
+  section.paddingRight = 24;
+  section.fills = [];
+  if (borderColor) {
+    section.strokes = [{ type: 'SOLID', color: borderColor }];
+    section.strokeTopWeight = 0;
+    section.strokeRightWeight = 0;
+    section.strokeBottomWeight = 1;
+    section.strokeLeftWeight = 0;
+  }
+  return section;
+}
 
-  // Add title
-  const titleText = createText(title, 14, 'Bold', colors.text);
-  card.appendChild(titleText);
-
-  return card;
+/**
+ * Format a timestamp as a short date string (e.g. "Jan 1, 2024")
+ */
+function formatDate(timestamp: Date): string {
+  return timestamp.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 /**
  * Create line chart for file growth over time
  *
- * Displays a simple line chart showing layer count changes across commits.
- * Uses connected points with labels for first, middle, and last commits.
+ * Flat section with a line chart, date range labels, and summary stats.
  */
 function createFileGrowthChart(
   commits: Commit[],
@@ -168,40 +176,26 @@ function createFileGrowthChart(
   colors: TrendColors,
   width: number
 ): FrameNode {
-  const card = createCard('File Growth Over Time', colors, width);
+  const section = createSection('File Growth Over Time', width, 24, colors.border);
 
-  // Handle empty commits
+  const sectionTitle = createText('FILE GROWTH OVER TIME', 16, 'Bold', colors.text);
+  section.appendChild(sectionTitle);
+
   if (commits.length === 0) {
     const emptyText = createText('No data available', 12, 'Regular', colors.textMuted);
-    card.appendChild(emptyText);
-    return card;
+    section.appendChild(emptyText);
+    return section;
   }
 
-  // Sort commits chronologically
   const sorted = [...commits].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
   );
 
-  // Create chart area
+  const contentWidth = width - 48;
   const chartHeight = 120;
-  const chartWidth = width - 32;
   const chartPadding = 20;
 
-  const chartFrame = figma.createFrame();
-  chartFrame.name = 'Chart';
-  chartFrame.layoutMode = 'VERTICAL';
-  chartFrame.primaryAxisSizingMode = 'AUTO';
-  chartFrame.counterAxisSizingMode = 'FIXED';
-  chartFrame.resize(chartWidth, chartHeight);
-  chartFrame.fills = [];
-
-  // Find min and max values for scaling
-  const nodeValues = sorted.map((c) => c.metrics.totalNodes);
-  const minNodes = Math.min(...nodeValues);
-  const maxNodes = Math.max(...nodeValues);
-  const range = maxNodes - minNodes || 1;
-
-  // Calculate trend color
+  // Trend color
   let trendColor: RGB;
   if (analysis.trend === 'growing') {
     trendColor = colors.success;
@@ -211,16 +205,39 @@ function createFileGrowthChart(
     trendColor = colors.warning;
   }
 
-  // Create line path using vector network
+  // Chart + date range wrapper
+  const chartWrapper = figma.createFrame();
+  chartWrapper.name = 'chart';
+  chartWrapper.layoutMode = 'VERTICAL';
+  chartWrapper.primaryAxisSizingMode = 'AUTO';
+  chartWrapper.counterAxisSizingMode = 'FIXED';
+  chartWrapper.resize(contentWidth, 100);
+  chartWrapper.itemSpacing = 12;
+  chartWrapper.fills = [];
+
+  // Chart area
+  const chartFrame = figma.createFrame();
+  chartFrame.name = 'Chart';
+  chartFrame.layoutMode = 'VERTICAL';
+  chartFrame.primaryAxisSizingMode = 'AUTO';
+  chartFrame.counterAxisSizingMode = 'FIXED';
+  chartFrame.resize(contentWidth, chartHeight);
+  chartFrame.fills = [];
+
+  const nodeValues = sorted.map((c) => c.metrics.totalNodes);
+  const minNodes = Math.min(...nodeValues);
+  const maxNodes = Math.max(...nodeValues);
+  const range = maxNodes - minNodes || 1;
+
   const line = figma.createVector();
   line.name = 'Growth Line';
 
-  // Build vector path
   const points: VectorVertex[] = [];
   const segments: VectorSegment[] = [];
 
   sorted.forEach((commit, index) => {
-    const x = chartPadding + (index / (sorted.length - 1)) * (chartWidth - chartPadding * 2);
+    const x =
+      chartPadding + (index / (sorted.length - 1)) * (contentWidth - chartPadding * 2);
     const normalizedValue = (commit.metrics.totalNodes - minNodes) / range;
     const y = chartHeight - chartPadding - normalizedValue * (chartHeight - chartPadding * 2);
 
@@ -243,58 +260,80 @@ function createFileGrowthChart(
     }
   });
 
-  line.vectorNetwork = {
-    vertices: points,
-    segments,
-    regions: [],
-  };
-
+  line.vectorNetwork = { vertices: points, segments, regions: [] };
   line.strokes = [{ type: 'SOLID', color: trendColor }];
   line.strokeWeight = 2;
-  line.resize(chartWidth, chartHeight);
+  line.resize(contentWidth, chartHeight);
 
   chartFrame.appendChild(line);
 
-  // Add point markers at key positions (first, middle, last)
-  const keyIndices = [
-    0,
-    Math.floor(sorted.length / 2),
-    sorted.length - 1,
-  ].filter((i, idx, arr) => arr.indexOf(i) === idx); // Remove duplicates
+  const keyIndices = [0, Math.floor(sorted.length / 2), sorted.length - 1].filter(
+    (i, idx, arr) => arr.indexOf(i) === idx
+  );
 
   keyIndices.forEach((index) => {
     const commit = sorted[index];
-    const x = chartPadding + (index / (sorted.length - 1)) * (chartWidth - chartPadding * 2);
+    const x =
+      chartPadding + (index / (sorted.length - 1)) * (contentWidth - chartPadding * 2);
     const normalizedValue = (commit.metrics.totalNodes - minNodes) / range;
     const y = chartHeight - chartPadding - normalizedValue * (chartHeight - chartPadding * 2);
 
-    // Create point marker
     const point = figma.createEllipse();
     point.name = `Point ${index}`;
     point.resize(6, 6);
     point.x = x - 3;
     point.y = y - 3;
     point.fills = [{ type: 'SOLID', color: trendColor }];
-
     chartFrame.appendChild(point);
   });
 
-  card.appendChild(chartFrame);
+  chartWrapper.appendChild(chartFrame);
 
-  // Add summary stats
+  // Date range row
+  const dateRow = figma.createFrame();
+  dateRow.name = 'dateRange';
+  dateRow.layoutMode = 'HORIZONTAL';
+  dateRow.primaryAxisSizingMode = 'FIXED';
+  dateRow.counterAxisSizingMode = 'AUTO';
+  dateRow.resize(contentWidth, 20);
+  dateRow.primaryAxisAlignItems = 'SPACE_BETWEEN';
+  dateRow.fills = [];
+
+  const startText = createText(formatDate(sorted[0].timestamp), 13, 'Medium', colors.textMuted);
+  const endText = createText(
+    formatDate(sorted[sorted.length - 1].timestamp),
+    13,
+    'Medium',
+    colors.textMuted
+  );
+  dateRow.appendChild(startText);
+  dateRow.appendChild(endText);
+
+  chartWrapper.appendChild(dateRow);
+  section.appendChild(chartWrapper);
+
+  // Stats row
   const statsFrame = figma.createFrame();
   statsFrame.name = 'Stats';
   statsFrame.layoutMode = 'HORIZONTAL';
   statsFrame.primaryAxisSizingMode = 'AUTO';
   statsFrame.counterAxisSizingMode = 'AUTO';
-  statsFrame.itemSpacing = 24;
+  statsFrame.itemSpacing = 48;
   statsFrame.fills = [];
 
   const stats = [
-    { label: 'Trend', value: analysis.trend, color: trendColor },
-    { label: 'Current', value: `${analysis.currentNodes} layers`, color: colors.text },
-    { label: 'Change', value: `${analysis.totalGrowth >= 0 ? '+' : ''}${analysis.totalGrowth} layers`, color: colors.text },
-    { label: 'Avg Rate', value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${analysis.averageGrowthRate}/commit`, color: colors.textSecondary },
+    { label: 'TREND', value: analysis.trend, color: trendColor },
+    { label: 'CURRENT', value: `${analysis.currentNodes} layers`, color: colors.text },
+    {
+      label: 'CHANGE',
+      value: `${analysis.totalGrowth >= 0 ? '+' : ''}${analysis.totalGrowth} layers`,
+      color: colors.text,
+    },
+    {
+      label: 'AVG RATE',
+      value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${analysis.averageGrowthRate}/commit`,
+      color: colors.textSecondary,
+    },
   ];
 
   stats.forEach((stat) => {
@@ -303,225 +342,38 @@ function createFileGrowthChart(
     statFrame.layoutMode = 'VERTICAL';
     statFrame.primaryAxisSizingMode = 'AUTO';
     statFrame.counterAxisSizingMode = 'AUTO';
-    statFrame.itemSpacing = 2;
+    statFrame.itemSpacing = 6;
     statFrame.fills = [];
 
-    const label = createText(stat.label, 11, 'Regular', colors.textMuted);
-    const value = createText(stat.value, 13, 'Bold', stat.color);
-
+    const label = createText(stat.label, 13, 'Regular', colors.textMuted);
+    const value = createText(stat.value, 16, 'Bold', stat.color);
     statFrame.appendChild(label);
     statFrame.appendChild(value);
     statsFrame.appendChild(statFrame);
   });
 
-  card.appendChild(statsFrame);
+  section.appendChild(statsFrame);
 
-  return card;
-}
-
-/**
- * Create bar chart for most active layers
- *
- * Shows horizontal bars for top N layers by activity count.
- */
-function createMostActiveNodesChart(
-  hotspots: ActivityHotspot[],
-  topCount: number,
-  colors: TrendColors,
-  width: number
-): FrameNode {
-  const card = createCard(`Top ${topCount} Most Active Layers`, colors, width);
-
-  if (hotspots.length === 0) {
-    const emptyText = createText('No activity data available', 12, 'Regular', colors.textMuted);
-    card.appendChild(emptyText);
-    return card;
-  }
-
-  // Take top N hotspots
-  const topHotspots = hotspots.slice(0, topCount);
-  const maxActivity = Math.max(...topHotspots.map((h) => h.activityCount));
-
-  // Create bars
-  const barsFrame = figma.createFrame();
-  barsFrame.name = 'Bars';
-  barsFrame.layoutMode = 'VERTICAL';
-  barsFrame.primaryAxisSizingMode = 'AUTO';
-  barsFrame.counterAxisSizingMode = 'FIXED';
-  barsFrame.resize(width - 32, 100);
-  barsFrame.itemSpacing = 8;
-  barsFrame.fills = [];
-
-  topHotspots.forEach((hotspot, index) => {
-    const barFrame = figma.createFrame();
-    barFrame.name = `Bar ${index + 1}`;
-    barFrame.layoutMode = 'VERTICAL';
-    barFrame.primaryAxisSizingMode = 'AUTO';
-    barFrame.counterAxisSizingMode = 'FIXED';
-    barFrame.resize(width - 32, 40);
-    barFrame.itemSpacing = 4;
-    barFrame.fills = [];
-
-    // Layer name label
-    const layerName = getLayerName(hotspot.nodeId);
-    const nodeLabel = createText(
-      layerName,
-      11,
-      'Medium',
-      colors.text
-    );
-    barFrame.appendChild(nodeLabel);
-
-    // Bar container with background
-    const barContainer = figma.createFrame();
-    barContainer.name = 'Bar Container';
-    barContainer.layoutMode = 'HORIZONTAL';
-    barContainer.primaryAxisSizingMode = 'FIXED';
-    barContainer.counterAxisSizingMode = 'FIXED';
-    barContainer.resize(width - 32, 16);
-    barContainer.fills = [{ type: 'SOLID', color: colors.border }];
-    barContainer.cornerRadius = 4;
-
-    // Active bar
-    const barWidth = (hotspot.activityCount / maxActivity) * (width - 32);
-    const bar = figma.createFrame();
-    bar.name = 'Active Bar';
-    bar.resize(barWidth, 16);
-    bar.fills = [{ type: 'SOLID', color: colors.primary }];
-    bar.cornerRadius = 4;
-
-    barContainer.appendChild(bar);
-    barFrame.appendChild(barContainer);
-
-    // Stats label
-    const statsLabel = createText(
-      `${hotspot.activityCount} activities • ${hotspot.commitCount} commits`,
-      10,
-      'Regular',
-      colors.textMuted
-    );
-    barFrame.appendChild(statsLabel);
-
-    barsFrame.appendChild(barFrame);
-  });
-
-  card.appendChild(barsFrame);
-
-  return card;
-}
-
-/**
- * Create list view for high-churn layers
- *
- * Shows a simple list of top layers with their activity counts.
- */
-function createHighChurnList(
-  hotspots: ActivityHotspot[],
-  topCount: number,
-  colors: TrendColors,
-  width: number
-): FrameNode {
-  const card = createCard(`Top ${topCount} High-Churn Layers`, colors, width);
-
-  if (hotspots.length === 0) {
-    const emptyText = createText('No activity data available', 12, 'Regular', colors.textMuted);
-    card.appendChild(emptyText);
-    return card;
-  }
-
-  // Take top N hotspots
-  const topHotspots = hotspots.slice(0, topCount);
-
-  // Create list
-  const listFrame = figma.createFrame();
-  listFrame.name = 'List';
-  listFrame.layoutMode = 'VERTICAL';
-  listFrame.primaryAxisSizingMode = 'AUTO';
-  listFrame.counterAxisSizingMode = 'FIXED';
-  listFrame.resize(width - 32, 100);
-  listFrame.itemSpacing = 8;
-  listFrame.fills = [];
-
-  topHotspots.forEach((hotspot, index) => {
-    const itemFrame = figma.createFrame();
-    itemFrame.name = `Item ${index + 1}`;
-    itemFrame.layoutMode = 'HORIZONTAL';
-    itemFrame.primaryAxisSizingMode = 'AUTO';
-    itemFrame.counterAxisSizingMode = 'AUTO';
-    itemFrame.itemSpacing = 12;
-    itemFrame.fills = [];
-    itemFrame.counterAxisAlignItems = 'CENTER';
-
-    // Rank badge
-    const badge = figma.createFrame();
-    badge.name = 'Rank';
-    badge.layoutMode = 'HORIZONTAL';
-    badge.primaryAxisSizingMode = 'AUTO';
-    badge.counterAxisSizingMode = 'AUTO';
-    badge.paddingTop = 4;
-    badge.paddingBottom = 4;
-    badge.paddingLeft = 8;
-    badge.paddingRight = 8;
-    badge.fills = [{ type: 'SOLID', color: colors.primary }];
-    badge.cornerRadius = 4;
-
-    const rankText = createText(`#${index + 1}`, 11, 'Bold', colors.background);
-    badge.appendChild(rankText);
-    itemFrame.appendChild(badge);
-
-    // Layer info
-    const infoFrame = figma.createFrame();
-    infoFrame.name = 'Info';
-    infoFrame.layoutMode = 'VERTICAL';
-    infoFrame.primaryAxisSizingMode = 'AUTO';
-    infoFrame.counterAxisSizingMode = 'AUTO';
-    infoFrame.itemSpacing = 2;
-    infoFrame.fills = [];
-
-    const layerName = getLayerName(hotspot.nodeId);
-    const nodeText = createText(layerName, 12, 'Medium', colors.text);
-    const statsText = createText(
-      `${hotspot.activityCount} activities • ${hotspot.commitCount} commits`,
-      10,
-      'Regular',
-      colors.textMuted
-    );
-
-    infoFrame.appendChild(nodeText);
-    infoFrame.appendChild(statsText);
-    itemFrame.appendChild(infoFrame);
-
-    listFrame.appendChild(itemFrame);
-  });
-
-  card.appendChild(listFrame);
-
-  return card;
+  return section;
 }
 
 /**
  * Create timeline for period classification
  *
- * Shows a horizontal timeline with color-coded segments for different period types.
+ * Flat section with period badge, breakdown bar, and legend.
  */
 function createPeriodTimeline(
   classification: PeriodClassification,
   colors: TrendColors,
   width: number
 ): FrameNode {
-  const card = createCard('Project Activity Period', colors, width);
+  const section = createSection('Project Activity Period', width, 12);
 
-  // Timeline container
-  const timelineFrame = figma.createFrame();
-  timelineFrame.name = 'Timeline';
-  timelineFrame.layoutMode = 'VERTICAL';
-  timelineFrame.primaryAxisSizingMode = 'AUTO';
-  timelineFrame.counterAxisSizingMode = 'FIXED';
-  timelineFrame.resize(width - 32, 80);
-  timelineFrame.itemSpacing = 12;
-  timelineFrame.fills = [];
+  const sectionTitle = createText('PROJECT ACTIVITY PERIOD', 16, 'Bold', colors.text);
+  section.appendChild(sectionTitle);
 
-  // Main period indicator
+  const contentWidth = width - 48;
+
   const periodColors = {
     expansion: colors.success,
     cleanup: colors.error,
@@ -530,13 +382,23 @@ function createPeriodTimeline(
   };
 
   const periodColor = periodColors[classification.type];
-  const periodLabels = {
-    expansion: 'Expansion Phase',
-    cleanup: 'Cleanup Phase',
-    stable: 'Stable Phase',
-    mixed: 'Mixed Activity',
+  const periodLabels: Record<string, string> = {
+    expansion: 'EXPANSION PHASE',
+    cleanup: 'CLEANUP PHASE',
+    stable: 'STABLE PHASE',
+    mixed: 'MIXED ACTIVITY',
   };
 
+  const timelineFrame = figma.createFrame();
+  timelineFrame.name = 'Timeline';
+  timelineFrame.layoutMode = 'VERTICAL';
+  timelineFrame.primaryAxisSizingMode = 'AUTO';
+  timelineFrame.counterAxisSizingMode = 'FIXED';
+  timelineFrame.resize(contentWidth, 80);
+  timelineFrame.itemSpacing = 12;
+  timelineFrame.fills = [];
+
+  // Period badge + commit count
   const mainPeriod = figma.createFrame();
   mainPeriod.name = 'Main Period';
   mainPeriod.layoutMode = 'HORIZONTAL';
@@ -546,7 +408,6 @@ function createPeriodTimeline(
   mainPeriod.fills = [];
   mainPeriod.counterAxisAlignItems = 'CENTER';
 
-  // Period badge
   const periodBadge = figma.createFrame();
   periodBadge.name = 'Period Badge';
   periodBadge.layoutMode = 'HORIZONTAL';
@@ -559,14 +420,13 @@ function createPeriodTimeline(
   periodBadge.fills = [{ type: 'SOLID', color: periodColor, opacity: 0.2 }];
   periodBadge.cornerRadius = 6;
 
-  const periodText = createText(periodLabels[classification.type], 14, 'Bold', periodColor);
+  const periodText = createText(periodLabels[classification.type], 16, 'Bold', periodColor);
   periodBadge.appendChild(periodText);
   mainPeriod.appendChild(periodBadge);
 
-  // Total commits
   const commitsText = createText(
     `${classification.totalCommits} commits analyzed`,
-    12,
+    13,
     'Regular',
     colors.textMuted
   );
@@ -574,13 +434,13 @@ function createPeriodTimeline(
 
   timelineFrame.appendChild(mainPeriod);
 
-  // Breakdown bars
+  // Breakdown bar
   const breakdownFrame = figma.createFrame();
   breakdownFrame.name = 'Breakdown';
   breakdownFrame.layoutMode = 'HORIZONTAL';
   breakdownFrame.primaryAxisSizingMode = 'FIXED';
   breakdownFrame.counterAxisSizingMode = 'FIXED';
-  breakdownFrame.resize(width - 32, 20);
+  breakdownFrame.resize(contentWidth, 20);
   breakdownFrame.itemSpacing = 0;
   breakdownFrame.fills = [];
 
@@ -592,7 +452,7 @@ function createPeriodTimeline(
 
   segments.forEach((segment) => {
     if (segment.rate > 0) {
-      const segmentWidth = ((segment.rate / 100) * (width - 32));
+      const segmentWidth = (segment.rate / 100) * contentWidth;
       const segmentBar = figma.createFrame();
       segmentBar.name = segment.label;
       segmentBar.resize(segmentWidth, 20);
@@ -628,80 +488,188 @@ function createPeriodTimeline(
     swatch.cornerRadius = 2;
     legendItem.appendChild(swatch);
 
-    const label = createText(`${segment.label} ${segment.rate}%`, 11, 'Regular', colors.text);
+    const label = createText(`${segment.label} ${segment.rate}%`, 13, 'Regular', colors.text);
     legendItem.appendChild(label);
 
     legendFrame.appendChild(legendItem);
   });
 
   timelineFrame.appendChild(legendFrame);
-  card.appendChild(timelineFrame);
+  section.appendChild(timelineFrame);
 
-  return card;
+  return section;
+}
+
+/**
+ * Create list view for high-churn layers
+ *
+ * Flat section with ranked list of layers by activity count.
+ */
+function createHighChurnList(
+  hotspots: ActivityHotspot[],
+  topCount: number,
+  colors: TrendColors,
+  width: number
+): FrameNode {
+  const section = createSection(`Top ${topCount} High-Churn Layers`, width, 12);
+
+  const sectionTitle = createText(`TOP ${topCount} HIGH-CHURN LAYERS`, 16, 'Bold', colors.text);
+  section.appendChild(sectionTitle);
+
+  if (hotspots.length === 0) {
+    const emptyText = createText('No activity data available', 12, 'Regular', colors.textMuted);
+    section.appendChild(emptyText);
+    return section;
+  }
+
+  const topHotspots = hotspots.slice(0, topCount);
+  const contentWidth = width - 48;
+
+  const listFrame = figma.createFrame();
+  listFrame.name = 'List';
+  listFrame.layoutMode = 'VERTICAL';
+  listFrame.primaryAxisSizingMode = 'AUTO';
+  listFrame.counterAxisSizingMode = 'FIXED';
+  listFrame.resize(contentWidth, 100);
+  listFrame.itemSpacing = 16;
+  listFrame.fills = [];
+
+  topHotspots.forEach((hotspot, index) => {
+    const itemFrame = figma.createFrame();
+    itemFrame.name = `Item ${index + 1}`;
+    itemFrame.layoutMode = 'HORIZONTAL';
+    itemFrame.primaryAxisSizingMode = 'AUTO';
+    itemFrame.counterAxisSizingMode = 'AUTO';
+    itemFrame.itemSpacing = 12;
+    itemFrame.fills = [];
+    itemFrame.counterAxisAlignItems = 'MIN';
+
+    // Rank badge — fixed 32px min-width, content right-aligned
+    const badge = figma.createFrame();
+    badge.name = 'Rank';
+    badge.layoutMode = 'HORIZONTAL';
+    badge.primaryAxisSizingMode = 'FIXED';
+    badge.counterAxisSizingMode = 'AUTO';
+    badge.resize(32, 20);
+    badge.paddingTop = 4;
+    badge.paddingBottom = 4;
+    badge.paddingLeft = 8;
+    badge.paddingRight = 8;
+    badge.primaryAxisAlignItems = 'MAX';
+    badge.fills = [{ type: 'SOLID', color: colors.primary }];
+    badge.cornerRadius = 4;
+
+    const rankText = createText(`#${index + 1}`, 11, 'Bold', colors.background);
+    badge.appendChild(rankText);
+    itemFrame.appendChild(badge);
+
+    // Layer info
+    const infoFrame = figma.createFrame();
+    infoFrame.name = 'Info';
+    infoFrame.layoutMode = 'VERTICAL';
+    infoFrame.primaryAxisSizingMode = 'AUTO';
+    infoFrame.counterAxisSizingMode = 'AUTO';
+    infoFrame.itemSpacing = 4;
+    infoFrame.fills = [];
+
+    const layerName = getLayerName(hotspot.nodeId);
+    const nodeText = createText(layerName, 16, 'Medium', colors.text);
+    const statsText = createText(
+      `${hotspot.activityCount} activities • ${hotspot.commitCount} commits`,
+      13,
+      'Regular',
+      colors.textMuted
+    );
+
+    infoFrame.appendChild(nodeText);
+    infoFrame.appendChild(statsText);
+    itemFrame.appendChild(infoFrame);
+
+    listFrame.appendChild(itemFrame);
+  });
+
+  section.appendChild(listFrame);
+
+  return section;
 }
 
 /**
  * Create complete trend insights visualization
  *
- * Combines all visualization components into a single expandable section.
+ * Combines all visualization components into a single frame with a header
+ * and flat sections, matching the Trend Insights & Analytics design.
  */
 export async function createTrendInsightsSection(
   commits: Commit[],
   config?: TrendVisualizationConfig
 ): Promise<FrameNode> {
-  // Load fonts
   await loadInterFont();
 
-  // Set defaults
   const fullConfig: Required<TrendVisualizationConfig> = {
     recentCommits: config?.recentCommits ?? 10,
     topNodesCount: config?.topNodesCount ?? 5,
     width: config?.width ?? 800,
   };
 
-  // Get theme colors
   const { detectTheme } = await import('./theme');
   const theme = detectTheme();
   const colors = getTrendColors(theme);
 
-  // Compute analytics
   const analytics = computeChangelogAnalytics(commits, {
     recentCommitsForNodes: fullConfig.recentCommits,
   });
 
-  // Create main container
+  // Main container — white background, rounded corners, no padding (sections self-manage)
   const container = figma.createFrame();
   container.name = 'Trend Insights';
   container.layoutMode = 'VERTICAL';
   container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'FIXED';
   container.resize(fullConfig.width, 100);
-  container.itemSpacing = 16;
-  container.paddingTop = 20;
-  container.paddingBottom = 20;
-  container.paddingLeft = 20;
-  container.paddingRight = 20;
-  container.fills = [{ type: 'SOLID', color: colors.background, opacity: 0.5 }];
+  container.itemSpacing = 0;
+  container.fills = [{ type: 'SOLID', color: colors.background }];
   container.cornerRadius = 8;
 
-  // Add title
-  const title = createText('📊 Trend Insights & Analytics', 18, 'Bold', colors.text);
-  container.appendChild(title);
+  // Header — light gray background, large title
+  const header = figma.createFrame();
+  header.name = 'header';
+  header.layoutMode = 'VERTICAL';
+  header.primaryAxisSizingMode = 'AUTO';
+  header.counterAxisSizingMode = 'FIXED';
+  header.resize(fullConfig.width, 100);
+  header.paddingTop = 32;
+  header.paddingBottom = 12;
+  header.paddingLeft = 24;
+  header.paddingRight = 24;
+  header.fills = [{ type: 'SOLID', color: colors.headerBackground }];
 
-  // Add visualizations
-  const fileGrowthChart = createFileGrowthChart(commits, analytics.fileGrowth, colors, fullConfig.width - 40);
-  container.appendChild(fileGrowthChart);
+  const title = createText('Trend Insights & Analytics', 24, 'Bold', colors.text);
+  header.appendChild(title);
+  container.appendChild(header);
 
-  const periodTimeline = createPeriodTimeline(analytics.periodClassification, colors, fullConfig.width - 40);
-  container.appendChild(periodTimeline);
+  // Sections
+  const fileGrowthSection = createFileGrowthChart(
+    commits,
+    analytics.fileGrowth,
+    colors,
+    fullConfig.width
+  );
+  container.appendChild(fileGrowthSection);
 
-  const highChurnList = createHighChurnList(
+  const periodSection = createPeriodTimeline(
+    analytics.periodClassification,
+    colors,
+    fullConfig.width
+  );
+  container.appendChild(periodSection);
+
+  const highChurnSection = createHighChurnList(
     analytics.activeNodes.hotspots,
     fullConfig.topNodesCount,
     colors,
-    fullConfig.width - 40
+    fullConfig.width
   );
-  container.appendChild(highChurnList);
+  container.appendChild(highChurnSection);
 
   return container;
 }
@@ -715,7 +683,6 @@ export async function renderTrendInsightsOnChangelogPage(
   commits: Commit[],
   config?: TrendVisualizationConfig
 ): Promise<FrameNode> {
-  // Get or create changelog page
   const changelogPage = getOrCreateChangelogPage();
 
   // Remove existing trend insights if present
@@ -729,16 +696,11 @@ export async function renderTrendInsightsOnChangelogPage(
     node.remove();
   }
 
-  // Create trend insights section
   const trendInsights = await createTrendInsightsSection(commits, config);
-
-  // Add to page
   changelogPage.appendChild(trendInsights);
 
   // Position below histogram (or at top if histogram doesn't exist)
   let yPosition = 100;
-
-  // Look for histogram to position below it
   for (const node of changelogPage.children) {
     if (node.type === 'FRAME' && node.name === 'Activity Histogram') {
       yPosition = (node as FrameNode).y + (node as FrameNode).height + 40;
