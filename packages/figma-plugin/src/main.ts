@@ -174,17 +174,20 @@ async function getPreCommitStats(): Promise<PreCommitStats> {
   console.log('[ChangeTracking] Tracking active:', isChangeTrackingActive);
   console.log('[ChangeTracking] Pages being tracked:', changeTrackingStore.size);
 
-  // Load previous commits to count new comments/annotations
+  // Load previous commits, then fetch comments and annotations in parallel
   const existingCommits = await loadCommits();
 
-  // Fetch comments and filter to new ones
-  const commentsResult = await fetchComments();
+  const [commentsResult, allAnnotations] = await Promise.all([
+    fetchComments(),
+    collectAnnotations()
+  ]);
+
+  // Filter to new comments
   const allComments = commentsResult.success ? commentsResult.comments || [] : [];
   const allPreviousComments = existingCommits.flatMap(commit => commit.comments || []);
   const newComments = filterNewComments(allComments, allPreviousComments);
 
-  // Collect annotations and filter to new ones
-  const allAnnotations = await collectAnnotations();
+  // Filter to new annotations
   const allPreviousAnnotations = existingCommits.flatMap(commit => commit.annotations || []);
   const newAnnotations = filterNewAnnotations(allAnnotations, allPreviousAnnotations);
 
@@ -401,59 +404,83 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
 }
 
 /**
- * Recursively collect annotations from a node and its children
+ * Raw annotation collected during synchronous tree traversal (before category resolution)
  */
-async function collectAnnotationsFromNode(node: SceneNode, annotations: Annotation[]): Promise<void> {
-  // Check if node has annotations
+interface RawAnnotation {
+  annotation: any;
+  nodeId: string;
+  nodeName: string;
+}
+
+/**
+ * Synchronously collect raw annotations from a node tree (no async calls)
+ */
+function collectRawAnnotationsFromNode(node: SceneNode, raw: RawAnnotation[]): void {
   if ('annotations' in node && Array.isArray(node.annotations)) {
     for (const annotation of node.annotations) {
-      // Fetch category label if categoryId exists
-      let categoryLabel: string | undefined;
-      if (annotation.categoryId) {
-        try {
-          const category = await figma.annotations.getAnnotationCategoryByIdAsync(annotation.categoryId);
-          categoryLabel = category?.label;
-        } catch (error) {
-          console.error('Error fetching annotation category:', error);
-        }
-      }
-
-      annotations.push({
-        label: annotation.label || '',
-        nodeId: node.id,
-        isPinned: true, // Annotations in the Plugin API are considered "pinned"
-        properties: {
-          ...annotation,
-          // Add category label if available
-          ...(categoryLabel && { category: categoryLabel }),
-          // Add node name for display
-          nodeName: node.name
-        }
-      });
+      raw.push({ annotation, nodeId: node.id, nodeName: node.name });
     }
   }
 
-  // Recursively process children if the node has them
   if ('children' in node) {
     for (const child of node.children) {
-      await collectAnnotationsFromNode(child, annotations);
+      collectRawAnnotationsFromNode(child, raw);
     }
   }
 }
 
 /**
- * Collect all annotations from the current page
+ * Collect all annotations from the current page.
+ * Tree traversal is synchronous; category lookups are batched and parallelized.
  */
 async function collectAnnotations(): Promise<Annotation[]> {
-  const annotations: Annotation[] = [];
   const currentPage = figma.currentPage;
 
-  // Traverse all nodes on the current page
+  // Phase 1: Synchronous tree walk to collect raw annotations
+  const raw: RawAnnotation[] = [];
   for (const node of currentPage.children) {
-    await collectAnnotationsFromNode(node, annotations);
+    collectRawAnnotationsFromNode(node, raw);
   }
 
-  return annotations;
+  if (raw.length === 0) return [];
+
+  // Phase 2: Batch-resolve unique category IDs in parallel
+  const uniqueCategoryIds = new Set<string>();
+  for (const { annotation } of raw) {
+    if (annotation.categoryId) uniqueCategoryIds.add(annotation.categoryId);
+  }
+
+  const categoryMap = new Map<string, string>();
+  if (uniqueCategoryIds.size > 0) {
+    const categoryEntries = await Promise.all(
+      Array.from(uniqueCategoryIds).map(async (id) => {
+        try {
+          const category = await figma.annotations.getAnnotationCategoryByIdAsync(id);
+          return [id, category?.label] as const;
+        } catch {
+          return [id, undefined] as const;
+        }
+      })
+    );
+    for (const [id, label] of categoryEntries) {
+      if (label) categoryMap.set(id, label);
+    }
+  }
+
+  // Phase 3: Build final annotation objects (synchronous)
+  return raw.map(({ annotation, nodeId, nodeName }) => {
+    const categoryLabel = annotation.categoryId ? categoryMap.get(annotation.categoryId) : undefined;
+    return {
+      label: annotation.label || '',
+      nodeId,
+      isPinned: true,
+      properties: {
+        ...annotation,
+        ...(categoryLabel && { category: categoryLabel }),
+        nodeName
+      }
+    };
+  });
 }
 
 /**
@@ -708,18 +735,21 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
  */
 async function loadCommits(): Promise<Commit[]> {
   const meta = await getChangelogMeta();
-  const commits: Commit[] = [];
 
-  for (let i = 0; i < meta.chunkCount; i++) {
-    try {
-      const chunk = await figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}${i}`);
-      if (chunk && Array.isArray(chunk)) {
-        // Migrate legacy commits
-        const migratedChunk = chunk.map(migrateLegacyCommit);
-        commits.push(...migratedChunk);
-      }
-    } catch (error) {
+  // Load all chunks in parallel instead of sequentially
+  const chunkPromises = Array.from({ length: meta.chunkCount }, (_, i) =>
+    figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}${i}`).catch(error => {
       console.error(`Error loading commit chunk ${i}:`, error);
+      return null;
+    })
+  );
+
+  const chunks = await Promise.all(chunkPromises);
+  const commits: Commit[] = [];
+  for (const chunk of chunks) {
+    if (chunk && Array.isArray(chunk)) {
+      const migratedChunk = chunk.map(migrateLegacyCommit);
+      commits.push(...migratedChunk);
     }
   }
 
@@ -1076,34 +1106,36 @@ export default function () {
         version = await calculateNextSemanticVersion(incrementType || 'patch');
       }
 
-      // Load previous commits to filter out already-seen comments and annotations
+      // Load previous commits, then run all data collection in parallel
       const existingCommits = await loadCommits();
 
-      // Fetch comments (if PAT is available), filtered to only new ones
-      const commentsResult = await fetchComments();
+      // Run independent data collection concurrently
+      const [commentsResult, allAnnotations, currentDevStatuses] = await Promise.all([
+        fetchComments(),
+        collectAnnotations(),
+        Promise.resolve(collectAllDevStatuses())
+      ]);
+
+      // Process comments
       const allComments = commentsResult.success ? commentsResult.comments || [] : [];
       if (!commentsResult.success && commentsResult.error) {
         console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
       }
-
-      // Filter comments using fingerprint-based deduplication against ALL previous comments
       const allPreviousComments = existingCommits.flatMap(commit => commit.comments || []);
       const comments = filterNewComments(allComments, allPreviousComments);
       console.log(`[Version] Comments: ${allComments.length} total, ${comments.length} new for version ${version}`);
 
-      // Collect annotations, filtered to only new or changed ones
-      const allAnnotations = await collectAnnotations();
+      // Process annotations
       const allPreviousAnnotations = existingCommits.flatMap(commit => commit.annotations || []);
       const annotations = filterNewAnnotations(allAnnotations, allPreviousAnnotations);
       console.log(`[Version] Annotations: ${allAnnotations.length} total, ${annotations.length} new for version ${version}`);
 
-      // Collect metrics
+      // Collect metrics (depends on comments + annotations count)
       const feedbackCount = comments.length + annotations.length;
       const metrics = collectMetrics(feedbackCount);
       console.log(`[Version] Feedback count: ${feedbackCount} (${comments.length} comments, ${annotations.length} annotations)`);
 
-      // Collect dev status changes by diffing current state against previous commit's snapshot
-      const currentDevStatuses = collectAllDevStatuses();
+      // Process dev status changes
       const previousSnapshot = existingCommits.length > 0 ? existingCommits[0].devStatusSnapshot : undefined;
       const devStatusChanges = computeDevStatusChanges(currentDevStatuses, previousSnapshot);
       const devStatusSnapshot = Object.fromEntries(
