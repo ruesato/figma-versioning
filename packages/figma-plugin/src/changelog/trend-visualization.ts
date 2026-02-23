@@ -699,17 +699,8 @@ export async function renderTrendInsightsOnChangelogPage(
   const trendInsights = await createTrendInsightsSection(commits, config);
   changelogPage.appendChild(trendInsights);
 
-  // Position below histogram (or at top if histogram doesn't exist)
-  let yPosition = 100;
-  for (const node of changelogPage.children) {
-    if (node.type === 'FRAME' && node.name === 'Activity Histogram') {
-      yPosition = (node as FrameNode).y + (node as FrameNode).height + 40;
-      break;
-    }
-  }
-
-  trendInsights.x = 100;
-  trendInsights.y = yPosition;
+  trendInsights.x = -900;
+  trendInsights.y = 400;
 
   return trendInsights;
 }
