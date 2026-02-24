@@ -1,6 +1,6 @@
 {
   "name": "figma-versioning",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "private": true,
   "description": "Figma design changelog and versioning system",
   "packageManager": "pnpm@9.15.4",
