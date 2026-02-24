@@ -10,7 +10,7 @@ const CHANGELOG_META_KEY = 'figma_versioning_changelog_meta';
 const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 
 // SharedPluginData keys for backup storage
-const SHARED_PLUGIN_NAMESPACE = 'figma-versioning';
+const SHARED_PLUGIN_NAMESPACE = 'figma_versioning';
 const SHARED_PLUGIN_COMMITS_KEY = 'commits_backup';
 const MIGRATION_FLAG_KEY = 'migration_backfill_v1';
 
@@ -879,8 +879,12 @@ export default function () {
   // Setup histogram interactivity for navigation
   setupHistogramInteractivity();
 
-  // Setup change tracking with documentchange listener
-  figma.on('documentchange', async (event: DocumentChangeEvent) => {
+  // Setup change tracking with documentchange listener.
+  // dynamic-page mode requires loadAllPagesAsync before registering documentchange.
+  // Run this async so the plugin UI can render immediately while pages load in background.
+  (async () => {
+    await figma.loadAllPagesAsync();
+    figma.on('documentchange', async (event: DocumentChangeEvent) => {
     isChangeTrackingActive = true;
     console.log(`[ChangeTracking] Document changed - ${event.documentChanges.length} changes`);
 
@@ -916,6 +920,7 @@ export default function () {
     // Notify UI that stats have changed
     emit('CHANGE_TRACKED');
   });
+  })();
 
   // Handle PAT status check
   on('CHECK_PAT', async function () {
