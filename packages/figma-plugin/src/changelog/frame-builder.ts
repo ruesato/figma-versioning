@@ -166,11 +166,11 @@ function createSectionHeader(
 /**
  * Create a single comment item frame
  */
-function createCommentItem(
+async function createCommentItem(
   comment: import('@figma-versioning/core').Comment,
   colors: ReturnType<typeof getThemeColors>,
   parentCommentText?: string
-): FrameNode {
+): Promise<FrameNode> {
   const isReply = !!parentCommentText;
   const commentFrame = figma.createFrame();
   commentFrame.name = isReply ? 'Reply Item' : 'Comment Item';
@@ -231,7 +231,7 @@ function createCommentItem(
     let nodeExists = true;
 
     try {
-      const node = figma.getNodeById(comment.nodeId);
+      const node = await figma.getNodeByIdAsync(comment.nodeId);
       if (node && 'name' in node) {
         nodeDisplayName = node.name;
       }
@@ -272,7 +272,7 @@ function createCommentItem(
 /**
  * Create comments section with uppercase header and orange badge
  */
-function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
+async function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): Promise<FrameNode | null> {
   if (!commit.comments || !Array.isArray(commit.comments) || commit.comments.length === 0) {
     console.log(`[Changelog] No comments for version ${commit.version}`, {
       hasComments: !!commit.comments,
@@ -332,13 +332,13 @@ function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThem
   // Render root comments followed by their replies
   for (const rootComment of rootComments) {
     // Render root comment
-    const commentItem = createCommentItem(rootComment, colors);
+    const commentItem = await createCommentItem(rootComment, colors);
     commentsFrame.appendChild(commentItem);
 
     // Render replies to this root comment
     const commentReplies = replies.get(rootComment.id) || [];
     for (const reply of commentReplies) {
-      const replyItem = createCommentItem(reply, colors, rootComment.text);
+      const replyItem = await createCommentItem(reply, colors, rootComment.text);
       commentsFrame.appendChild(replyItem);
     }
   }
@@ -391,7 +391,7 @@ function createPropertyRow(
  *
  * Only displays properties that have values (non-null, non-undefined)
  */
-function createAnnotationItem(annotation: import('@figma-versioning/core').Annotation, colors: ReturnType<typeof getThemeColors>): FrameNode {
+async function createAnnotationItem(annotation: import('@figma-versioning/core').Annotation, colors: ReturnType<typeof getThemeColors>): Promise<FrameNode> {
   const annotationFrame = figma.createFrame();
   annotationFrame.name = 'Annotation Item';
   annotationFrame.layoutMode = 'VERTICAL';
@@ -461,7 +461,7 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
       // Get the actual node to read property values
       let node: SceneNode | null = null;
       try {
-        node = figma.getNodeById(annotation.nodeId) as SceneNode;
+        node = await figma.getNodeByIdAsync(annotation.nodeId) as SceneNode;
       } catch (error) {
         console.warn(`[Annotation] Could not find node ${annotation.nodeId}`, error);
       }
@@ -533,7 +533,7 @@ function createAnnotationItem(annotation: import('@figma-versioning/core').Annot
 /**
  * Create annotations section with uppercase header and blue badge
  */
-function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): FrameNode | null {
+async function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): Promise<FrameNode | null> {
   if (commit.annotations.length === 0) {
     return null;
   }
@@ -555,7 +555,7 @@ function createAnnotationsSection(commit: Commit, colors: ReturnType<typeof getT
 
   // Add individual annotation items
   for (const annotation of commit.annotations) {
-    const annotationItem = createAnnotationItem(annotation, colors);
+    const annotationItem = await createAnnotationItem(annotation, colors);
     annotationsFrame.appendChild(annotationItem);
   }
 
@@ -703,13 +703,13 @@ export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode>
   container.appendChild(header);
 
   // Add comments section (if any)
-  const comments = createCommentsSection(commit, colors);
+  const comments = await createCommentsSection(commit, colors);
   if (comments) {
     container.appendChild(comments);
   }
 
   // Add annotations section (if any)
-  const annotations = createAnnotationsSection(commit, colors);
+  const annotations = await createAnnotationsSection(commit, colors);
   if (annotations) {
     container.appendChild(annotations);
   }

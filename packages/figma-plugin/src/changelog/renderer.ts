@@ -72,8 +72,8 @@ const ENTRY_SPACING = 32;
  *
  * @returns The container frame for changelog entries
  */
-export function getOrCreateContainerFrame(): FrameNode {
-  const page = getOrCreateChangelogPage();
+export async function getOrCreateContainerFrame(): Promise<FrameNode> {
+  const page = await getOrCreateChangelogPage();
 
   // Search for existing container frame
   for (const node of page.children) {
@@ -126,10 +126,10 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
   const entryFrame = await createCommitEntryFrame(commit);
 
   // Get or create the container
-  const container = getOrCreateContainerFrame();
+  const container = await getOrCreateContainerFrame();
 
   // Get the changelog page
-  const changelogPage = getOrCreateChangelogPage();
+  const changelogPage = await getOrCreateChangelogPage();
 
   // Unlock container temporarily to add entry
   container.locked = false;
@@ -158,8 +158,8 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
  *
  * @returns The container frame or null if not found
  */
-export function findContainerFrame(): FrameNode | null {
-  const page = getOrCreateChangelogPage();
+export async function findContainerFrame(): Promise<FrameNode | null> {
+  const page = await getOrCreateChangelogPage();
 
   for (const node of page.children) {
     if (node.type === 'FRAME' && node.name === CONTAINER_NAME) {
@@ -174,8 +174,8 @@ export function findContainerFrame(): FrameNode | null {
  * Remove the existing changelog entries container if it exists
  * This clears all rendered changelog entries from the canvas
  */
-export function clearChangelogContainer(): void {
-  const page = getOrCreateChangelogPage();
+export async function clearChangelogContainer(): Promise<void> {
+  const page = await getOrCreateChangelogPage();
 
   // Find and remove ALL containers with the matching name (in case of duplicates)
   const containersToRemove: SceneNode[] = [];
@@ -229,7 +229,7 @@ export async function rebuildChangelog(
   console.log(`[Rebuild] Commit versions:`, commits.map(c => c.version).join(', '));
 
   // Clear existing container
-  clearChangelogContainer();
+  await clearChangelogContainer();
 
   // Sort commits by version (newest first)
   // Use version comparison for proper semantic/date-based ordering
@@ -260,7 +260,7 @@ export async function rebuildChangelog(
       const entryFrame = await createCommitEntryFrame(commit);
 
       // Get or create the container (will be created on first iteration)
-      const container = getOrCreateContainerFrame();
+      const container = await getOrCreateContainerFrame();
 
       // Unlock container temporarily to add entry
       container.locked = false;
@@ -282,11 +282,11 @@ export async function rebuildChangelog(
   }
 
   // Navigate to the changelog page to show the rebuilt changelog
-  const changelogPage = getOrCreateChangelogPage();
+  const changelogPage = await getOrCreateChangelogPage();
   figma.currentPage = changelogPage;
 
   // Scroll to show the container
-  const container = findContainerFrame();
+  const container = await findContainerFrame();
   if (container) {
     figma.viewport.scrollAndZoomIntoView([container]);
   }

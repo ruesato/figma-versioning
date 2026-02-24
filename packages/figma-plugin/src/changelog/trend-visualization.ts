@@ -78,9 +78,9 @@ function getTrendColors(theme: 'light' | 'dark' | 'figjam'): TrendColors {
  * Get layer name from node ID, prefixed with the page name
  * Returns "[pageName] / [layerName]" if found, or a fallback string if deleted/not found
  */
-function getLayerName(nodeId: string): string {
+async function getLayerName(nodeId: string): Promise<string> {
   try {
-    const node = figma.getNodeById(nodeId);
+    const node = await figma.getNodeByIdAsync(nodeId);
     if (node && 'name' in node) {
       // Walk up the parent chain to find the containing page
       let current: BaseNode | null = node;
@@ -505,12 +505,12 @@ function createPeriodTimeline(
  *
  * Flat section with ranked list of layers by activity count.
  */
-function createHighChurnList(
+async function createHighChurnList(
   hotspots: ActivityHotspot[],
   topCount: number,
   colors: TrendColors,
   width: number
-): FrameNode {
+): Promise<FrameNode> {
   const section = createSection(`Top ${topCount} High-Churn Layers`, width, 12);
 
   const sectionTitle = createText(`TOP ${topCount} HIGH-CHURN LAYERS`, 16, 'Bold', colors.text);
@@ -534,7 +534,8 @@ function createHighChurnList(
   listFrame.itemSpacing = 16;
   listFrame.fills = [];
 
-  topHotspots.forEach((hotspot, index) => {
+  for (let index = 0; index < topHotspots.length; index++) {
+    const hotspot = topHotspots[index];
     const itemFrame = figma.createFrame();
     itemFrame.name = `Item ${index + 1}`;
     itemFrame.layoutMode = 'HORIZONTAL';
@@ -572,7 +573,7 @@ function createHighChurnList(
     infoFrame.itemSpacing = 4;
     infoFrame.fills = [];
 
-    const layerName = getLayerName(hotspot.nodeId);
+    const layerName = await getLayerName(hotspot.nodeId);
     const nodeText = createText(layerName, 16, 'Medium', colors.text);
     const statsText = createText(
       `${hotspot.activityCount} activities • ${hotspot.commitCount} commits`,
@@ -586,7 +587,7 @@ function createHighChurnList(
     itemFrame.appendChild(infoFrame);
 
     listFrame.appendChild(itemFrame);
-  });
+  }
 
   section.appendChild(listFrame);
 
@@ -663,7 +664,7 @@ export async function createTrendInsightsSection(
   );
   container.appendChild(periodSection);
 
-  const highChurnSection = createHighChurnList(
+  const highChurnSection = await createHighChurnList(
     analytics.activeNodes.hotspots,
     fullConfig.topNodesCount,
     colors,
@@ -683,7 +684,7 @@ export async function renderTrendInsightsOnChangelogPage(
   commits: Commit[],
   config?: TrendVisualizationConfig
 ): Promise<FrameNode> {
-  const changelogPage = getOrCreateChangelogPage();
+  const changelogPage = await getOrCreateChangelogPage();
 
   // Remove existing trend insights if present
   const nodesToRemove: SceneNode[] = [];

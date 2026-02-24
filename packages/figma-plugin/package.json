@@ -35,7 +35,8 @@
     "permissions": [
       "currentuser"
     ],
-    "enablePrivatePluginApi": true
+    "enablePrivatePluginApi": true,
+    "documentAccess": "dynamic-page"
   },
   "dependencies": {
     "@create-figma-plugin/ui": "^4.0.3",

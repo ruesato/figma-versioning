@@ -33,15 +33,17 @@ export function createChangelogPage(): PageNode {
 }
 
 /**
- * Get or create the Changelog page
- * If the page exists, return it. Otherwise, create a new one.
+ * Get or create the Changelog page.
+ * If the page exists, loads it before returning so downstream code
+ * can safely access page.children (required for dynamic-page mode).
  *
  * @returns The Changelog page (existing or newly created)
  */
-export function getOrCreateChangelogPage(): PageNode {
+export async function getOrCreateChangelogPage(): Promise<PageNode> {
   const existingPage = findChangelogPage();
 
   if (existingPage) {
+    await existingPage.loadAsync();
     return existingPage;
   }
 
