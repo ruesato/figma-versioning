@@ -17,6 +17,10 @@ const MIGRATION_FLAG_KEY = 'migration_backfill_v1';
 // Cached file key - requires enablePrivatePluginApi in manifest
 let cachedFileKey: string | null = null;
 
+// loadCommits() cache to avoid redundant calls during version creation
+let commitsCache: { result: Commit[]; timestamp: number } | null = null;
+const COMMITS_CACHE_TTL_MS = 5000; // 5 second TTL
+
 /**
  * In-memory change tracking store
  * Tracks document changes by page since plugin was opened
@@ -47,9 +51,9 @@ function getPageTracker(pageId: string): PageChangeTracker {
 /**
  * Get the page ID for a given node
  */
-function getPageIdForNode(nodeId: string): string | null {
+async function getPageIdForNode(nodeId: string): Promise<string | null> {
   try {
-    const node = figma.getNodeById(nodeId);
+    const node = await figma.getNodeByIdAsync(nodeId);
     if (!node) return null;
 
     let current: BaseNode | null = node;
@@ -80,42 +84,32 @@ interface DevStatusNodeInfo {
 }
 
 /**
- * Recursively collect dev statuses from a node and its children
+ * Scan all pages and collect every layer that has a dev status set.
+ * Uses loadAsync() + findAllWithCriteria for dramatically faster traversal.
  */
-function collectDevStatusesFromNode(
-  node: SceneNode,
-  pageId: string,
-  pageName: string,
-  result: Record<string, DevStatusNodeInfo>
-): void {
-  if ('devStatus' in node && node.devStatus) {
-    const rawStatus = node.devStatus as { type: string } | null;
-    if (rawStatus && (rawStatus.type === 'READY_FOR_DEV' || rawStatus.type === 'COMPLETED')) {
-      result[node.id] = {
-        status: rawStatus.type as LayerDevStatus,
-        pageId,
-        pageName,
-        nodeName: node.name
-      };
-    }
-  }
-
-  if ('children' in node) {
-    for (const child of node.children) {
-      collectDevStatusesFromNode(child, pageId, pageName, result);
-    }
-  }
-}
-
-/**
- * Scan all pages and collect every layer that has a dev status set
- */
-function collectAllDevStatuses(): Record<string, DevStatusNodeInfo> {
+async function collectAllDevStatuses(): Promise<Record<string, DevStatusNodeInfo>> {
   const result: Record<string, DevStatusNodeInfo> = {};
 
+  // Node types that can have devStatus
+  const candidateTypes: NodeType[] = ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'SECTION'];
+
   for (const page of figma.root.children) {
-    for (const node of page.children) {
-      collectDevStatusesFromNode(node, page.id, page.name, result);
+    // Load page data before accessing children (required for dynamic-page)
+    await page.loadAsync();
+
+    const candidates = page.findAllWithCriteria({ types: candidateTypes });
+    for (const node of candidates) {
+      if ('devStatus' in node && node.devStatus) {
+        const rawStatus = node.devStatus as { type: string } | null;
+        if (rawStatus && (rawStatus.type === 'READY_FOR_DEV' || rawStatus.type === 'COMPLETED')) {
+          result[node.id] = {
+            status: rawStatus.type as LayerDevStatus,
+            pageId: page.id,
+            pageName: page.name,
+            nodeName: node.name
+          };
+        }
+      }
     }
   }
 
@@ -199,7 +193,7 @@ async function getPreCommitStats(): Promise<PreCommitStats> {
     const pageId = entry[0];
     const tracker = entry[1];
 
-    const page = figma.getNodeById(pageId) as PageNode | null;
+    const page = await figma.getNodeByIdAsync(pageId) as PageNode | null;
     if (!page) continue;
 
     const nodesAdded = tracker.nodesAdded.size;
@@ -404,7 +398,7 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
 }
 
 /**
- * Raw annotation collected during synchronous tree traversal (before category resolution)
+ * Raw annotation collected during tree traversal (before category resolution)
  */
 interface RawAnnotation {
   annotation: any;
@@ -413,33 +407,24 @@ interface RawAnnotation {
 }
 
 /**
- * Synchronously collect raw annotations from a node tree (no async calls)
- */
-function collectRawAnnotationsFromNode(node: SceneNode, raw: RawAnnotation[]): void {
-  if ('annotations' in node && Array.isArray(node.annotations)) {
-    for (const annotation of node.annotations) {
-      raw.push({ annotation, nodeId: node.id, nodeName: node.name });
-    }
-  }
-
-  if ('children' in node) {
-    for (const child of node.children) {
-      collectRawAnnotationsFromNode(child, raw);
-    }
-  }
-}
-
-/**
  * Collect all annotations from the current page.
- * Tree traversal is synchronous; category lookups are batched and parallelized.
+ * Uses native findAll for fast traversal; category lookups are batched and parallelized.
  */
 async function collectAnnotations(): Promise<Annotation[]> {
   const currentPage = figma.currentPage;
 
-  // Phase 1: Synchronous tree walk to collect raw annotations
+  // Phase 1: Use native findAll to find annotated nodes in one pass
+  const annotatedNodes = currentPage.findAll(
+    n => 'annotations' in n && Array.isArray(n.annotations) && n.annotations.length > 0
+  );
+
   const raw: RawAnnotation[] = [];
-  for (const node of currentPage.children) {
-    collectRawAnnotationsFromNode(node, raw);
+  for (const node of annotatedNodes) {
+    if ('annotations' in node && Array.isArray(node.annotations)) {
+      for (const annotation of node.annotations) {
+        raw.push({ annotation, nodeId: node.id, nodeName: node.name });
+      }
+    }
   }
 
   if (raw.length === 0) return [];
@@ -548,52 +533,24 @@ function filterNewAnnotations(current: Annotation[], allPrevious: Annotation[]):
 }
 
 /**
- * Count metrics for a node and its children
- */
-function countNodeMetrics(node: SceneNode, metrics: Omit<CommitMetrics, 'feedbackCount' | 'feedbackDelta'>): void {
-  // Increment total nodes
-  metrics.totalNodes++;
-
-  // Check node type and increment appropriate counter
-  if (node.type === 'FRAME') {
-    metrics.frames++;
-  } else if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
-    metrics.components++;
-  } else if (node.type === 'INSTANCE') {
-    metrics.instances++;
-  } else if (node.type === 'TEXT') {
-    metrics.textNodes++;
-  }
-
-  // Recursively process children if the node has them
-  if ('children' in node) {
-    for (const child of node.children) {
-      countNodeMetrics(child, metrics);
-    }
-  }
-}
-
-/**
- * Collect node metrics from the current page
+ * Collect node metrics from the current page using native findAllWithCriteria.
+ * Current page is already loaded, so no loadAsync() needed.
  */
 function collectMetrics(feedbackCount: number): CommitMetrics {
-  const metrics: Omit<CommitMetrics, 'feedbackCount' | 'feedbackDelta'> = {
-    totalNodes: 0,
-    frames: 0,
-    components: 0,
-    instances: 0,
-    textNodes: 0
-  };
-
   const currentPage = figma.currentPage;
 
-  // Traverse all nodes on the current page
-  for (const node of currentPage.children) {
-    countNodeMetrics(node, metrics);
-  }
+  const frames = currentPage.findAllWithCriteria({ types: ['FRAME'] }).length;
+  const components = currentPage.findAllWithCriteria({ types: ['COMPONENT', 'COMPONENT_SET'] }).length;
+  const instances = currentPage.findAllWithCriteria({ types: ['INSTANCE'] }).length;
+  const textNodes = currentPage.findAllWithCriteria({ types: ['TEXT'] }).length;
+  const totalNodes = currentPage.findAll().length;
 
   return {
-    ...metrics,
+    totalNodes,
+    frames,
+    components,
+    instances,
+    textNodes,
     feedbackCount
   };
 }
@@ -734,6 +691,11 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
  * Load all commits from storage chunks
  */
 async function loadCommits(): Promise<Commit[]> {
+  // Return cached result if fresh
+  if (commitsCache && (Date.now() - commitsCache.timestamp) < COMMITS_CACHE_TTL_MS) {
+    return commitsCache.result;
+  }
+
   const meta = await getChangelogMeta();
 
   // Load all chunks in parallel instead of sequentially
@@ -801,6 +763,7 @@ async function loadCommits(): Promise<Commit[]> {
           await saveChangelogMeta(restoredMeta);
 
           console.log(`[Storage] ✓ Restored ${migratedCommits.length} commits from backup to clientStorage`);
+          commitsCache = { result: migratedCommits, timestamp: Date.now() };
           return migratedCommits;
         }
       }
@@ -810,6 +773,7 @@ async function loadCommits(): Promise<Commit[]> {
     }
   }
 
+  commitsCache = { result: commits, timestamp: Date.now() };
   return commits;
 }
 
@@ -818,6 +782,9 @@ async function loadCommits(): Promise<Commit[]> {
  * Stores commits in chunks of up to 10 commits per chunk
  */
 async function saveCommit(commit: Commit): Promise<void> {
+  // Invalidate cache on write
+  commitsCache = null;
+
   const meta = await getChangelogMeta();
   const commits = await loadCommits();
 
@@ -899,6 +866,9 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
 }
 
 export default function () {
+  // Skip invisible instance children for faster traversals (up to 100x speedup)
+  figma.skipInvisibleInstanceChildren = true;
+
   // Cache file key at init — requires enablePrivatePluginApi in manifest
   cachedFileKey = getFileKey();
   console.log(`[Init] File key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null'}`);
@@ -910,12 +880,12 @@ export default function () {
   setupHistogramInteractivity();
 
   // Setup change tracking with documentchange listener
-  figma.on('documentchange', (event: DocumentChangeEvent) => {
+  figma.on('documentchange', async (event: DocumentChangeEvent) => {
     isChangeTrackingActive = true;
     console.log(`[ChangeTracking] Document changed - ${event.documentChanges.length} changes`);
 
     for (const change of event.documentChanges) {
-      const pageId = getPageIdForNode(change.id);
+      const pageId = await getPageIdForNode(change.id);
       if (!pageId) {
         console.log(`[ChangeTracking] Could not determine page for node ${change.id}`);
         continue;
@@ -1064,7 +1034,7 @@ export default function () {
       }
 
       // Find the changelog frame
-      const changelogFrame = figma.getNodeById(commit.changelogFrameId);
+      const changelogFrame = await figma.getNodeByIdAsync(commit.changelogFrameId);
 
       // Type guard: ensure it's a SceneNode
       if (!changelogFrame || !('type' in changelogFrame) || changelogFrame.type === 'DOCUMENT') {
@@ -1074,7 +1044,7 @@ export default function () {
 
       // Navigate to the changelog page
       const { getOrCreateChangelogPage } = await import('./changelog');
-      const changelogPage = getOrCreateChangelogPage();
+      const changelogPage = await getOrCreateChangelogPage();
       figma.currentPage = changelogPage;
 
       // Scroll to the frame
@@ -1113,7 +1083,7 @@ export default function () {
       const [commentsResult, allAnnotations, currentDevStatuses] = await Promise.all([
         fetchComments(),
         collectAnnotations(),
-        Promise.resolve(collectAllDevStatuses())
+        collectAllDevStatuses()
       ]);
 
       // Process comments

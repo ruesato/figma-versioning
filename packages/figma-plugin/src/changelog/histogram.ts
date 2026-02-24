@@ -438,7 +438,7 @@ export async function renderHistogramOnChangelogPage(
 
   // Get or create changelog page first
   const { getOrCreateChangelogPage } = await import('./page-manager');
-  const changelogPage = getOrCreateChangelogPage();
+  const changelogPage = await getOrCreateChangelogPage();
 
   // Remove existing histogram if present
   // Collect nodes to remove first to avoid modifying array during iteration
@@ -474,7 +474,7 @@ export async function renderHistogramOnChangelogPage(
  *
  * @returns True if navigation occurred, false otherwise
  */
-export function navigateFromHistogramBar(): boolean {
+export async function navigateFromHistogramBar(): Promise<boolean> {
   const selection = figma.currentPage.selection;
 
   if (selection.length !== 1) {
@@ -496,12 +496,12 @@ export function navigateFromHistogramBar(): boolean {
       if (commitId) {
         // If we have a changelog frame ID, navigate to it
         if (changelogFrameId) {
-          const changelogFrame = figma.getNodeById(changelogFrameId);
+          const changelogFrame = await figma.getNodeByIdAsync(changelogFrameId);
 
           // Type guard: ensure it's a SceneNode
           if (changelogFrame && 'type' in changelogFrame && changelogFrame.type !== 'DOCUMENT') {
             // Ensure we're on the changelog page
-            const changelogPage = getOrCreateChangelogPage();
+            const changelogPage = await getOrCreateChangelogPage();
             figma.currentPage = changelogPage;
 
             // Navigate to the changelog entry
