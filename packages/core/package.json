@@ -1,6 +1,6 @@
 {
   "name": "@figma-versioning/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Core library for Figma versioning and changelog functionality",
   "type": "module",
   "main": "./dist/index.js",
