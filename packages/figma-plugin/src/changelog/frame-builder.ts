@@ -14,6 +14,8 @@ const FRAME_WIDTH = 600;
 const PADDING = 16;
 const SECTION_SPACING = 12;
 const LABEL_WIDTH = 88; // Width for property labels in columnar layout
+const CARD_PADDING = 16;
+const CARD_BORDER_RADIUS = 8;
 
 /**
  * Load Inter font for text rendering
@@ -138,7 +140,7 @@ function createSectionHeader(
   headerRow.counterAxisAlignItems = 'CENTER';
 
   // Uppercase title
-  const titleText = createText(title.toUpperCase(), 12, 'Medium', colors.textMuted);
+  const titleText = createText(title.toUpperCase(), 16, 'Bold', colors.textSecondary);
   headerRow.appendChild(titleText);
 
   // Badge with count
@@ -161,6 +163,127 @@ function createSectionHeader(
 
   headerRow.locked = true;
   return headerRow;
+}
+
+/**
+ * Create a single page change entry with name and change statistics
+ */
+function createPageEntry(
+  pageName: string,
+  added: number,
+  modified: number,
+  colors: ReturnType<typeof getThemeColors>
+): FrameNode {
+  const entry = figma.createFrame();
+  entry.name = 'Page Entry';
+  entry.layoutMode = 'VERTICAL';
+  entry.primaryAxisSizingMode = 'AUTO';
+  entry.counterAxisSizingMode = 'FIXED';
+  entry.resize(FRAME_WIDTH - PADDING * 2 - CARD_PADDING * 2, entry.height);
+  entry.itemSpacing = 4;
+  entry.fills = [];
+
+  // Page name (bold, prominent)
+  const pageNameText = createText(pageName, 12, 'Medium', colors.text);
+  entry.appendChild(pageNameText);
+
+  // Stats line: "+{added} added • {modified} modified • Net change: +{net}"
+  const net = added - modified;
+  const statsFrame = figma.createFrame();
+  statsFrame.name = 'Stats Line';
+  statsFrame.layoutMode = 'HORIZONTAL';
+  statsFrame.primaryAxisSizingMode = 'AUTO';
+  statsFrame.counterAxisSizingMode = 'AUTO';
+  statsFrame.itemSpacing = 4;
+  statsFrame.fills = [];
+
+  // Added count
+  const addedText = createText(`+${added} added`, 11, 'Regular', colors.textSecondary);
+  statsFrame.appendChild(addedText);
+
+  // Separator and modified count
+  const separatorText = createText('•', 11, 'Regular', colors.textSecondary);
+  statsFrame.appendChild(separatorText);
+
+  const modifiedText = createText(`${modified} modified`, 11, 'Regular', colors.textSecondary);
+  statsFrame.appendChild(modifiedText);
+
+  // Net change line
+  const netSeparator = createText('•', 11, 'Regular', colors.textSecondary);
+  statsFrame.appendChild(netSeparator);
+
+  const netLabel = createText('Net change:', 11, 'Regular', colors.textSecondary);
+  statsFrame.appendChild(netLabel);
+
+  const netValue = createText(`+${net}`, 11, 'Medium', { r: 0, g: 0.478, b: 0.145 }); // #007a25 green
+  statsFrame.appendChild(netValue);
+
+  statsFrame.locked = true;
+  entry.appendChild(statsFrame);
+
+  entry.locked = true;
+  return entry;
+}
+
+/**
+ * Create pages changed section with card-style layout
+ */
+async function createPagesChangedSection(
+  commit: Commit,
+  colors: ReturnType<typeof getThemeColors>,
+  pageStats?: import('@figma-versioning/core').PageChangeStats[]
+): Promise<FrameNode | null> {
+  // Only show if there are page changes to display
+  if (!pageStats || pageStats.length === 0) {
+    return null;
+  }
+
+  const sectionFrame = figma.createFrame();
+  sectionFrame.name = 'Pages Changed';
+  sectionFrame.layoutMode = 'VERTICAL';
+  sectionFrame.primaryAxisSizingMode = 'AUTO';
+  sectionFrame.counterAxisSizingMode = 'FIXED';
+  sectionFrame.resize(FRAME_WIDTH, sectionFrame.height);
+  sectionFrame.itemSpacing = 8;
+  sectionFrame.paddingLeft = PADDING;
+  sectionFrame.paddingRight = PADDING;
+  sectionFrame.fills = [];
+
+  // Section header with badge
+  const sectionHeader = createSectionHeader('Pages Changed', pageStats.length, colors.pagesChangedBadge, colors);
+  sectionFrame.appendChild(sectionHeader);
+
+  // Card container for page entries
+  const card = figma.createFrame();
+  card.name = 'Pages Changed Card';
+  card.layoutMode = 'VERTICAL';
+  card.primaryAxisSizingMode = 'AUTO';
+  card.counterAxisSizingMode = 'FIXED';
+  card.resize(FRAME_WIDTH - PADDING * 2, card.height);
+  card.itemSpacing = 12;
+  card.paddingTop = CARD_PADDING;
+  card.paddingBottom = CARD_PADDING;
+  card.paddingLeft = CARD_PADDING;
+  card.paddingRight = CARD_PADDING;
+  card.cornerRadius = CARD_BORDER_RADIUS;
+  card.fills = [{ type: 'SOLID', color: colors.headerBackground }];
+
+  // Add page entries
+  for (const pageChange of pageStats) {
+    const entry = createPageEntry(
+      pageChange.pageName,
+      pageChange.nodesAdded,
+      pageChange.nodesModified,
+      colors
+    );
+    card.appendChild(entry);
+  }
+
+  card.locked = true;
+  sectionFrame.appendChild(card);
+
+  sectionFrame.locked = true;
+  return sectionFrame;
 }
 
 /**
@@ -651,9 +774,10 @@ function createDevStatusSection(commit: Commit, colors: ReturnType<typeof getThe
  * Create a complete commit entry frame with all sections
  *
  * @param commit - The commit data to render
+ * @param pageStats - Optional page change statistics to display
  * @returns A locked frame containing the commit entry
  */
-export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode> {
+export async function createCommitEntryFrame(commit: Commit, pageStats?: import('@figma-versioning/core').PageChangeStats[]): Promise<FrameNode> {
   // Load fonts
   await loadInterFont();
 
@@ -679,6 +803,12 @@ export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode>
   // Add header section (includes version, author, timestamp, title, description)
   const header = createHeaderSection(commit, colors);
   container.appendChild(header);
+
+  // Add pages changed section (if any)
+  const pagesChanged = await createPagesChangedSection(commit, colors, pageStats);
+  if (pagesChanged) {
+    container.appendChild(pagesChanged);
+  }
 
   // Add comments section (if any)
   const comments = await createCommentsSection(commit, colors);

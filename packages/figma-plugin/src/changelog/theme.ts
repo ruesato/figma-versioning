@@ -19,6 +19,7 @@ export interface ThemeColors {
   commentBadge: RGB;
   annotationBadge: RGB;
   devStatusBadge: RGB;
+  pagesChangedBadge: RGB;
 }
 
 /**
@@ -58,7 +59,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         accent: { r: 0.2, g: 0.47, b: 1 },                   // Figma blue
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
         annotationBadge: { r: 0.204, g: 0.361, b: 0.8 },     // #345ccc blue
-        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 }     // #11a066 green
+        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 },    // #11a066 green
+        pagesChangedBadge: { r: 0.6, g: 0.4, b: 0.898 }      // #9966e5 purple
       };
 
     case 'dark':
@@ -73,7 +75,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         accent: { r: 0.4, g: 0.6, b: 1 },                    // Lighter blue
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
         annotationBadge: { r: 0.204, g: 0.361, b: 0.8 },     // #345ccc blue
-        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 }     // #11a066 green
+        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 },    // #11a066 green
+        pagesChangedBadge: { r: 0.6, g: 0.4, b: 0.898 }      // #9966e5 purple
       };
 
     case 'figjam':
@@ -88,7 +91,8 @@ export function getThemeColors(theme: Theme): ThemeColors {
         accent: { r: 0.51, g: 0.35, b: 1 },                  // FigJam purple
         commentBadge: { r: 0.98, g: 0.31, b: 0.043 },        // #fa4f0b orange
         annotationBadge: { r: 0.51, g: 0.35, b: 1 },         // FigJam purple for annotations
-        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 }     // #11a066 green
+        devStatusBadge: { r: 0.067, g: 0.627, b: 0.400 },    // #11a066 green
+        pagesChangedBadge: { r: 0.6, g: 0.4, b: 0.898 }      // #9966e5 purple
       };
   }
 }
