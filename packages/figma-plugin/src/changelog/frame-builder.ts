@@ -274,22 +274,8 @@ async function createCommentItem(
  */
 async function createCommentsSection(commit: Commit, colors: ReturnType<typeof getThemeColors>): Promise<FrameNode | null> {
   if (!commit.comments || !Array.isArray(commit.comments) || commit.comments.length === 0) {
-    console.log(`[Changelog] No comments for version ${commit.version}`, {
-      hasComments: !!commit.comments,
-      isArray: Array.isArray(commit.comments),
-      length: commit.comments?.length
-    });
     return null;
   }
-
-  console.log(`[Changelog] Rendering ${commit.comments.length} comments for version ${commit.version}`, {
-    comments: commit.comments.map(c => ({
-      id: c.id,
-      author: c.author.name,
-      textPreview: c.text.substring(0, 30),
-      isReply: !!c.parentId
-    }))
-  });
 
   const commentsFrame = figma.createFrame();
   commentsFrame.name = 'Comments';
@@ -481,7 +467,6 @@ async function createAnnotationItem(annotation: import('@figma-versioning/core')
 
         // Skip null/undefined values
         if (propertyValue === null || propertyValue === undefined) {
-          console.log(`[Annotation] Property ${propertyName} not found on node or is null`);
           continue;
         }
 
@@ -669,13 +654,6 @@ function createDevStatusSection(commit: Commit, colors: ReturnType<typeof getThe
  * @returns A locked frame containing the commit entry
  */
 export async function createCommitEntryFrame(commit: Commit): Promise<FrameNode> {
-  console.log(`[Changelog] Creating commit entry frame for version ${commit.version}`, {
-    hasComments: commit.comments && commit.comments.length > 0,
-    commentCount: commit.comments?.length || 0,
-    hasAnnotations: commit.annotations && commit.annotations.length > 0,
-    annotationCount: commit.annotations?.length || 0
-  });
-
   // Load fonts
   await loadInterFont();
 

@@ -185,16 +185,10 @@ export async function clearChangelogContainer(): Promise<void> {
     }
   }
 
-  console.log(`[Rebuild] Found ${containersToRemove.length} container(s) to remove`);
-
   for (const container of containersToRemove) {
     if (container.type === 'FRAME') {
       // Unlock container before removing
       container.locked = false;
-
-      // Count children
-      const childCount = container.children.length;
-      console.log(`[Rebuild] Removing container with ${childCount} children`);
 
       // Remove all children first
       while (container.children.length > 0) {
@@ -221,12 +215,8 @@ export async function rebuildChangelog(
 ): Promise<Record<string, string>> {
   // Handle empty commits
   if (commits.length === 0) {
-    console.log('[Rebuild] No commits to rebuild');
     return {};
   }
-
-  console.log(`[Rebuild] Starting rebuild of ${commits.length} commits`);
-  console.log(`[Rebuild] Commit versions:`, commits.map(c => c.version).join(', '));
 
   // Clear existing container
   await clearChangelogContainer();
@@ -241,8 +231,6 @@ export async function rebuildChangelog(
     // If versions are equal (shouldn't happen), fall back to timestamp
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
-
-  console.log(`[Rebuild] Sorted versions:`, sortedCommits.map(c => c.version).join(', '));
 
   // Map to store new frame IDs
   const frameIdMap: Record<string, string> = {};
@@ -273,8 +261,6 @@ export async function rebuildChangelog(
 
       // Store the new frame ID
       frameIdMap[commit.id] = entryFrame.id;
-
-      console.log(`[Rebuild] Rendered commit ${i + 1}/${sortedCommits.length}: ${commit.version}`);
     } catch (error) {
       console.error(`[Rebuild] Failed to render commit ${commit.id}:`, error);
       // Continue with remaining commits even if one fails
@@ -290,8 +276,6 @@ export async function rebuildChangelog(
   if (container) {
     figma.viewport.scrollAndZoomIntoView([container]);
   }
-
-  console.log(`[Rebuild] Completed rebuild of ${Object.keys(frameIdMap).length} commits`);
 
   return frameIdMap;
 }
