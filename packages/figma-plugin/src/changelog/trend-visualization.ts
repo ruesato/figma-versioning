@@ -155,6 +155,13 @@ function createSection(name: string, width: number, spacing: number, borderColor
 }
 
 /**
+ * Format a number with thousands separators (e.g. 1921 → "1,921")
+ */
+function formatNumber(n: number): string {
+  return n.toLocaleString('en-US');
+}
+
+/**
  * Format a timestamp as a short date string (e.g. "Jan 1, 2024")
  */
 function formatDate(timestamp: Date): string {
@@ -323,15 +330,15 @@ async function createFileGrowthChart(
 
   const stats = [
     { label: 'TREND', value: analysis.trend, color: trendColor },
-    { label: 'CURRENT', value: `${analysis.currentNodes} layers`, color: colors.text },
+    { label: 'CURRENT', value: `${formatNumber(analysis.currentNodes)} layers`, color: colors.text },
     {
       label: 'CHANGE',
-      value: `${analysis.totalGrowth >= 0 ? '+' : ''}${analysis.totalGrowth} layers`,
+      value: `${analysis.totalGrowth >= 0 ? '+' : ''}${formatNumber(Math.abs(analysis.totalGrowth))} layers`,
       color: colors.text,
     },
     {
       label: 'AVG RATE',
-      value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${analysis.averageGrowthRate}/commit`,
+      value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${formatNumber(Math.abs(analysis.averageGrowthRate))}/commit`,
       color: colors.textSecondary,
     },
   ];
@@ -425,7 +432,7 @@ function createPeriodTimeline(
   mainPeriod.appendChild(periodBadge);
 
   const commitsText = createText(
-    `${classification.totalCommits} commits analyzed`,
+    `${formatNumber(classification.totalCommits)} commits analyzed`,
     13,
     'Regular',
     colors.textMuted
@@ -576,7 +583,7 @@ async function createHighChurnList(
     const layerName = await getLayerName(hotspot.nodeId);
     const nodeText = createText(layerName, 16, 'Medium', colors.text);
     const statsText = createText(
-      `${hotspot.activityCount} activities • ${hotspot.commitCount} commits`,
+      `${formatNumber(hotspot.activityCount)} activities • ${formatNumber(hotspot.commitCount)} commits`,
       13,
       'Regular',
       colors.textMuted

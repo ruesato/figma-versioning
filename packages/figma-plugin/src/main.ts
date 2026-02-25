@@ -73,7 +73,6 @@ async function getPageIdForNode(nodeId: string): Promise<string | null> {
  */
 function resetChangeTracking(): void {
   changeTrackingStore.clear();
-  console.log('[ChangeTracking] Store reset');
 }
 
 interface DevStatusNodeInfo {
@@ -164,10 +163,6 @@ function computeDevStatusChanges(
  * Get current pre-commit stats
  */
 async function getPreCommitStats(): Promise<PreCommitStats> {
-  console.log('[ChangeTracking] Getting pre-commit stats...');
-  console.log('[ChangeTracking] Tracking active:', isChangeTrackingActive);
-  console.log('[ChangeTracking] Pages being tracked:', changeTrackingStore.size);
-
   // Load previous commits, then fetch comments and annotations in parallel
   const existingCommits = await loadCommits();
 
@@ -200,8 +195,6 @@ async function getPreCommitStats(): Promise<PreCommitStats> {
     const nodesRemoved = tracker.nodesRemoved.size;
     const nodesModified = tracker.nodesModified.size;
 
-    console.log(`[ChangeTracking] Page "${page.name}": +${nodesAdded} ~${nodesModified} -${nodesRemoved}`);
-
     // Only include pages with changes
     if (nodesAdded > 0 || nodesRemoved > 0 || nodesModified > 0) {
       pageChanges.push({
@@ -214,8 +207,6 @@ async function getPreCommitStats(): Promise<PreCommitStats> {
       });
     }
   }
-
-  console.log(`[ChangeTracking] Stats: ${newComments.length} comments, ${newAnnotations.length} annotations, ${pageChanges.length} pages with changes`);
 
   return {
     newCommentsCount: newComments.length,
@@ -349,9 +340,6 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
       return { success: false, error: 'Unable to determine current file. Please ensure a file is open.' };
     }
 
-    console.log(`[Comments] File key: ${fileKey}`);
-    console.log('[Comments] Fetching comments from Figma API...');
-
     // Fetch comments from Figma API
     const response = await fetch(`https://api.figma.com/v1/files/${fileKey}/comments`, {
       headers: {
@@ -370,7 +358,6 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
 
     const data = await response.json();
     const rawComments = data.comments || [];
-    console.log(`[Comments] Received ${rawComments.length} comments from API`);
 
     // Transform Figma comments to our format
     const comments: Comment[] = rawComments.map((comment: any) => ({
@@ -385,7 +372,6 @@ async function fetchComments(): Promise<{ success: boolean; comments?: Comment[]
       parentId: comment.parent_id
     }));
 
-    console.log(`[Comments] Successfully transformed ${comments.length} comments`);
     return { success: true, comments };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Failed to fetch comments';
@@ -485,31 +471,11 @@ function commentFingerprint(c: Comment): string {
  */
 function filterNewComments(current: Comment[], allPrevious: Comment[]): Comment[] {
   if (allPrevious.length === 0) {
-    console.log('[Comments] No previous comments, returning all comments');
     return current;
   }
 
-  console.log('[Comments] =================================');
-  console.log('[Comments] Filtering comments using fingerprint-based deduplication');
-  console.log('[Comments] Current comments:', current.length);
-  console.log('[Comments] Previous comments:', allPrevious.length);
-
   const previousFingerprints = new Set(allPrevious.map(commentFingerprint));
-  const newComments = current.filter(c => {
-    const fingerprint = commentFingerprint(c);
-    const isNew = !previousFingerprints.has(fingerprint);
-
-    if (isNew) {
-      console.log(`[Comments] NEW comment: "${c.text.substring(0, 30)}..." by ${c.author.name}`);
-    } else {
-      console.log(`[Comments] Duplicate comment (skipping): "${c.text.substring(0, 30)}..." by ${c.author.name}`);
-    }
-
-    return isNew;
-  });
-
-  console.log(`[Comments] Filtered to ${newComments.length} new comments`);
-  console.log('[Comments] =================================');
+  const newComments = current.filter(c => !previousFingerprints.has(commentFingerprint(c)));
   return newComments;
 }
 
@@ -645,7 +611,6 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
     );
 
     if (existingBackup) {
-      console.log('[Migration] sharedPluginData already has commits, skipping backfill');
       figma.root.setSharedPluginData(SHARED_PLUGIN_NAMESPACE, MIGRATION_FLAG_KEY, 'true');
       return;
     }
@@ -667,16 +632,12 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
 
     // If we have commits in clientStorage, backfill to sharedPluginData
     if (commits.length > 0) {
-      console.log(`[Migration] Backfilling ${commits.length} commits to sharedPluginData...`);
-
       const serializedCommits = JSON.parse(JSON.stringify(commits));
       figma.root.setSharedPluginData(
         SHARED_PLUGIN_NAMESPACE,
         SHARED_PLUGIN_COMMITS_KEY,
         JSON.stringify(serializedCommits)
       );
-
-      console.log('[Migration] ✓ Backfill complete');
     }
 
     // Set migration flag to prevent running again
@@ -724,7 +685,6 @@ async function loadCommits(): Promise<Commit[]> {
       );
 
       if (backupData) {
-        console.log('[Storage] clientStorage empty, restoring from sharedPluginData backup');
         const parsedCommits = JSON.parse(backupData);
 
         if (Array.isArray(parsedCommits) && parsedCommits.length > 0) {
@@ -762,7 +722,6 @@ async function loadCommits(): Promise<Commit[]> {
           };
           await saveChangelogMeta(restoredMeta);
 
-          console.log(`[Storage] ✓ Restored ${migratedCommits.length} commits from backup to clientStorage`);
           commitsCache = { result: migratedCommits, timestamp: Date.now() };
           return migratedCommits;
         }
@@ -790,11 +749,6 @@ async function saveCommit(commit: Commit): Promise<void> {
 
   // Add new commit to the beginning (most recent first)
   commits.unshift(commit);
-
-  console.log(`[Storage] Saving commit ${commit.id} (version: ${commit.version})`, {
-    hasComments: commit.comments && commit.comments.length > 0,
-    commentCount: commit.comments?.length || 0
-  });
 
   // Split commits into chunks (10 commits per chunk)
   const CHUNK_SIZE = 10;
@@ -824,14 +778,6 @@ async function saveCommit(commit: Commit): Promise<void> {
   }
 
   // Verify the commit was saved (read back and validate)
-  const savedChunk = await figma.clientStorage.getAsync(`${COMMIT_CHUNK_PREFIX}0`);
-  const savedCommit = savedChunk?.[0];
-  if (savedCommit && savedCommit.id === commit.id) {
-    console.log(`[Storage] ✓ Commit saved successfully with ${savedCommit.comments?.length || 0} comments`);
-  } else {
-    console.warn(`[Storage] ⚠ Could not verify commit save`);
-  }
-
   // Update metadata
   meta.chunkCount = chunks.length;
   meta.lastCommitId = commit.id;
@@ -866,14 +812,11 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
 }
 
 export default function () {
-  console.log('[Init] Plugin version: 1.0.4-beta.3');
-
   // Skip invisible instance children for faster traversals (up to 100x speedup)
   figma.skipInvisibleInstanceChildren = true;
 
   // Cache file key at init — requires enablePrivatePluginApi in manifest
   cachedFileKey = getFileKey();
-  console.log(`[Init] File key: ${cachedFileKey ? cachedFileKey.substring(0, 8) + '...' : 'null'}`);
 
   // Run one-time migration to backfill existing commits to sharedPluginData
   migrateCommitsToSharedPluginData();
@@ -888,12 +831,10 @@ export default function () {
     await figma.loadAllPagesAsync();
     figma.on('documentchange', async (event: DocumentChangeEvent) => {
     isChangeTrackingActive = true;
-    console.log(`[ChangeTracking] Document changed - ${event.documentChanges.length} changes`);
 
     for (const change of event.documentChanges) {
       const pageId = await getPageIdForNode(change.id);
       if (!pageId) {
-        console.log(`[ChangeTracking] Could not determine page for node ${change.id}`);
         continue;
       }
 
@@ -903,18 +844,15 @@ export default function () {
         tracker.nodesAdded.add(change.id);
         // Remove from removed set if it was previously deleted and re-added
         tracker.nodesRemoved.delete(change.id);
-        console.log(`[ChangeTracking] Node created: ${change.id} on page ${pageId}`);
       } else if (change.type === 'DELETE') {
         tracker.nodesRemoved.add(change.id);
         // Remove from added/modified sets if it was previously tracked
         tracker.nodesAdded.delete(change.id);
         tracker.nodesModified.delete(change.id);
-        console.log(`[ChangeTracking] Node deleted: ${change.id} on page ${pageId}`);
       } else if (change.type === 'PROPERTY_CHANGE') {
         // Only track as modified if not already tracked as added
         if (!tracker.nodesAdded.has(change.id)) {
           tracker.nodesModified.add(change.id);
-          console.log(`[ChangeTracking] Node modified: ${change.id} on page ${pageId}`);
         }
       }
     }
@@ -1096,21 +1034,18 @@ export default function () {
       // Process comments
       const allComments = commentsResult.success ? commentsResult.comments || [] : [];
       if (!commentsResult.success && commentsResult.error) {
-        console.log(`[Version] Comments fetch failed: ${commentsResult.error}`);
+        console.warn(`[Version] Comments fetch failed: ${commentsResult.error}`);
       }
       const allPreviousComments = existingCommits.flatMap(commit => commit.comments || []);
       const comments = filterNewComments(allComments, allPreviousComments);
-      console.log(`[Version] Comments: ${allComments.length} total, ${comments.length} new for version ${version}`);
 
       // Process annotations
       const allPreviousAnnotations = existingCommits.flatMap(commit => commit.annotations || []);
       const annotations = filterNewAnnotations(allAnnotations, allPreviousAnnotations);
-      console.log(`[Version] Annotations: ${allAnnotations.length} total, ${annotations.length} new for version ${version}`);
 
       // Collect metrics (depends on comments + annotations count)
       const feedbackCount = comments.length + annotations.length;
       const metrics = collectMetrics(feedbackCount);
-      console.log(`[Version] Feedback count: ${feedbackCount} (${comments.length} comments, ${annotations.length} annotations)`);
 
       // Process dev status changes
       const previousSnapshot = existingCommits.length > 0 ? existingCommits[0].devStatusSnapshot : undefined;
@@ -1118,11 +1053,9 @@ export default function () {
       const devStatusSnapshot = Object.fromEntries(
         Object.entries(currentDevStatuses).map(([k, v]) => [k, { status: v.status, pageId: v.pageId, pageName: v.pageName, nodeName: v.nodeName }])
       );
-      console.log(`[Version] Dev status changes: ${devStatusChanges.length}`);
 
       // Create commit object
       const now = new Date();
-      console.log(`[Version] Creating new commit at:`, now.toISOString());
 
       const commit: Commit = {
         id: `commit_${Date.now()}`,
@@ -1139,16 +1072,6 @@ export default function () {
         devStatusChanges,
         devStatusSnapshot
       };
-
-      console.log(`[Version] Created commit object with ${comments.length} comments`, {
-        commitId: commit.id,
-        commentCount: comments.length,
-        commentDetails: comments.map(c => ({
-          author: c.author.name,
-          textPreview: c.text.substring(0, 30),
-          timestamp: c.timestamp.toISOString()
-        }))
-      });
 
       // Save commit data
       await saveCommit(commit);
@@ -1232,20 +1155,12 @@ export default function () {
         }
       }
 
-      if (commits.length !== allCommits.length) {
-        console.log(`[Rebuild] Deduplicated ${allCommits.length} commits to ${commits.length} unique commits`);
-      }
-
-      console.log(`[Rebuild] Starting rebuild of ${commits.length} commits`);
-
       // Notify start
       figma.notify(`Rebuilding changelog with ${commits.length} entries...`, { timeout: 1000 });
 
       // Rebuild the changelog and get the new frame IDs
       const { rebuildChangelog, renderHistogramOnChangelogPage } = await import('./changelog');
-      const frameIdMap = await rebuildChangelog(commits, (current, total) => {
-        console.log(`[Rebuild] Progress: ${current}/${total}`);
-      });
+      const frameIdMap = await rebuildChangelog(commits);
 
       // Update each commit with its new changelogFrameId
       const updatedCommits = commits.map(commit => ({
@@ -1272,7 +1187,6 @@ export default function () {
       const oldMeta = await getChangelogMeta();
       for (let i = chunks.length; i < oldMeta.chunkCount; i++) {
         await figma.clientStorage.deleteAsync(`${COMMIT_CHUNK_PREFIX}${i}`);
-        console.log(`[Rebuild] Cleaned up orphaned chunk ${i}`);
       }
 
       // Update metadata
@@ -1280,14 +1194,11 @@ export default function () {
       meta.chunkCount = chunks.length;
       await saveChangelogMeta(meta);
 
-      console.log(`[Rebuild] Updated ${Object.keys(frameIdMap).length} commit frame IDs in storage`);
-
       // Regenerate histogram and trend insights
       try {
         const { renderTrendInsightsOnChangelogPage } = await import('./changelog');
         await renderHistogramOnChangelogPage(updatedCommits);
         await renderTrendInsightsOnChangelogPage(updatedCommits);
-        console.log('[Rebuild] Visualizations regenerated successfully');
       } catch (visualizationError) {
         console.error('[Rebuild] Failed to regenerate visualizations:', visualizationError);
         // Don't fail the entire rebuild for visualization errors
