@@ -866,6 +866,8 @@ async function validatePat(pat: string): Promise<{ success: boolean; error?: str
 }
 
 export default function () {
+  console.log('[Init] Plugin version: 1.0.4-beta.3');
+
   // Skip invisible instance children for faster traversals (up to 100x speedup)
   figma.skipInvisibleInstanceChildren = true;
 
