@@ -17,6 +17,7 @@ function setupFigmaMocks() {
   global.figma = {
     createFrame: () => {
       const id = `frame-${Math.random()}`;
+      const pluginData: Record<string, string> = {};
       const frame: any = {
         id,
         type: 'FRAME',
@@ -46,6 +47,10 @@ function setupFigmaMocks() {
         appendChild: (child: any) => {
           frame.children.push(child);
         },
+        setPluginData: (key: string, value: string) => {
+          pluginData[key] = value;
+        },
+        getPluginData: (key: string) => pluginData[key] ?? '',
       };
       mockNodes[id] = frame;
       return frame;

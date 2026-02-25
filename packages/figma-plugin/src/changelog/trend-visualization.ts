@@ -583,6 +583,7 @@ async function createHighChurnList(
     itemFrame.itemSpacing = 12;
     itemFrame.fills = [];
     itemFrame.counterAxisAlignItems = 'MIN';
+    itemFrame.setPluginData('churnNodeId', hotspot.nodeId);
 
     // Rank badge — fixed 32px min-width, content right-aligned
     const badge = figma.createFrame();
@@ -740,4 +741,64 @@ export async function renderTrendInsightsOnChangelogPage(
   trendInsights.y = 400;
 
   return trendInsights;
+}
+
+/**
+ * Navigate to the Figma canvas node linked to a selected high-churn item.
+ *
+ * Checks up to 3 levels up from the selection for a frame with `churnNodeId`
+ * plugin data, then switches to the containing page and scrolls the target
+ * node into view.
+ *
+ * @returns True if navigation occurred, false otherwise
+ */
+export async function navigateFromChurnItem(): Promise<boolean> {
+  const selection = figma.currentPage.selection;
+  if (selection.length !== 1) return false;
+
+  let node: SceneNode | null = selection[0];
+  for (let i = 0; i < 4 && node; i++) {
+    if ('getPluginData' in node) {
+      const churnNodeId = (node as FrameNode).getPluginData('churnNodeId');
+      if (churnNodeId) {
+        const targetNode = await figma.getNodeByIdAsync(churnNodeId);
+        if (!targetNode || !('type' in targetNode) || targetNode.type === 'DOCUMENT') {
+          figma.notify('Layer no longer exists in the document');
+          return true;
+        }
+
+        // Walk up to find the containing page
+        let current: BaseNode | null = targetNode;
+        let targetPage: PageNode | null = null;
+        while (current && current.parent) {
+          current = current.parent;
+          if (current.type === 'PAGE') {
+            targetPage = current as PageNode;
+            break;
+          }
+        }
+
+        if (targetPage) {
+          await figma.setCurrentPageAsync(targetPage);
+        }
+        figma.viewport.scrollAndZoomIntoView([targetNode as SceneNode]);
+        figma.currentPage.selection = [targetNode as SceneNode];
+        return true;
+      }
+    }
+    node = node.parent as SceneNode | null;
+  }
+  return false;
+}
+
+/**
+ * Setup high-churn layer interactivity by monitoring selection changes.
+ *
+ * Call once at plugin load to enable automatic navigation when users click
+ * on items in the Top N High-Churn Layers section.
+ */
+export function setupChurnInteractivity(): void {
+  figma.on('selectionchange', () => {
+    navigateFromChurnItem();
+  });
 }

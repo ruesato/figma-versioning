@@ -60,5 +60,7 @@ export type {
 export {
   createTrendInsightsSection,
   renderTrendInsightsOnChangelogPage,
+  navigateFromChurnItem,
+  setupChurnInteractivity,
 } from './trend-visualization';
 export type { TrendVisualizationConfig } from './trend-visualization';

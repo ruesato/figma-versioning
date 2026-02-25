@@ -1,7 +1,7 @@
 import { once, on, emit, showUI } from '@create-figma-plugin/utilities';
 import { getNextSemanticVersion, getNextDateVersion } from '@figma-versioning/core';
 import type { VersionIncrement, Comment, Annotation, CommitMetrics, Commit, ChangelogMeta, PreCommitStats, PageChangeStats, DevStatusChange, LayerDevStatus } from '@figma-versioning/core';
-import { renderChangelogEntry, setupHistogramInteractivity } from './changelog';
+import { renderChangelogEntry, setupHistogramInteractivity, setupChurnInteractivity } from './changelog';
 
 const PAT_STORAGE_KEY = 'figma_versioning_pat';
 const VERSIONING_MODE_KEY = 'figma_versioning_mode';
@@ -823,6 +823,9 @@ export default function () {
 
   // Setup histogram interactivity for navigation
   setupHistogramInteractivity();
+
+  // Setup high-churn layer interactivity for canvas navigation
+  setupChurnInteractivity();
 
   // Setup change tracking with documentchange listener.
   // dynamic-page mode requires loadAllPagesAsync before registering documentchange.
