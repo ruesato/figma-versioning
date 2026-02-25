@@ -33,16 +33,16 @@ async function loadInterFont(): Promise<void> {
 }
 
 /**
- * Create a section divider line (1px top border)
+ * Create a section divider line (1px top border) with optional custom color
  */
-function createSectionDivider(): FrameNode {
+function createSectionDivider(color?: RGB): FrameNode {
   const divider = figma.createFrame();
   divider.name = 'Section Divider';
   divider.layoutMode = 'HORIZONTAL';
   divider.primaryAxisSizingMode = 'FIXED';
   divider.counterAxisSizingMode = 'FIXED';
   divider.resize(FRAME_WIDTH, 1);
-  divider.fills = [{ type: 'SOLID', color: SECTION_DIVIDER_COLOR }];
+  divider.fills = [{ type: 'SOLID', color: color || SECTION_DIVIDER_COLOR }];
   divider.locked = true;
   return divider;
 }
@@ -436,10 +436,6 @@ async function createCommentsSection(commit: Commit, colors: ReturnType<typeof g
   commentsFrame.paddingRight = PADDING;
   commentsFrame.fills = [];
 
-  // Add top divider
-  const divider = createSectionDivider();
-  commentsFrame.appendChild(divider);
-
   // Section header with badge
   const sectionHeader = createSectionHeader('Comments', commit.comments.length, colors.commentBadge, colors);
   commentsFrame.appendChild(sectionHeader);
@@ -496,6 +492,10 @@ async function createCommentsSection(commit: Commit, colors: ReturnType<typeof g
     }
   });
   await Promise.all(orphanedRenderPromises);
+
+  // Add bottom divider with header background color
+  const bottomDivider = createSectionDivider(colors.headerBackground);
+  commentsFrame.appendChild(bottomDivider);
 
   commentsFrame.locked = true;
   return commentsFrame;
@@ -699,10 +699,6 @@ async function createAnnotationsSection(commit: Commit, colors: ReturnType<typeo
   annotationsFrame.paddingRight = PADDING;
   annotationsFrame.fills = [];
 
-  // Add top divider
-  const divider = createSectionDivider();
-  annotationsFrame.appendChild(divider);
-
   // Section header with badge
   const sectionHeader = createSectionHeader('Annotations', commit.annotations.length, colors.annotationBadge, colors);
   annotationsFrame.appendChild(sectionHeader);
@@ -712,6 +708,10 @@ async function createAnnotationsSection(commit: Commit, colors: ReturnType<typeo
     const annotationItem = await createAnnotationItem(annotation, colors);
     annotationsFrame.appendChild(annotationItem);
   }
+
+  // Add bottom divider with header background color
+  const bottomDivider = createSectionDivider(colors.headerBackground);
+  annotationsFrame.appendChild(bottomDivider);
 
   annotationsFrame.locked = true;
   return annotationsFrame;
