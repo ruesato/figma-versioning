@@ -493,10 +493,6 @@ async function createCommentsSection(commit: Commit, colors: ReturnType<typeof g
   });
   await Promise.all(orphanedRenderPromises);
 
-  // Add bottom divider with header background color
-  const bottomDivider = createSectionDivider(colors.headerBackground);
-  commentsFrame.appendChild(bottomDivider);
-
   commentsFrame.locked = true;
   return commentsFrame;
 }
@@ -708,10 +704,6 @@ async function createAnnotationsSection(commit: Commit, colors: ReturnType<typeo
     const annotationItem = await createAnnotationItem(annotation, colors);
     annotationsFrame.appendChild(annotationItem);
   }
-
-  // Add bottom divider with header background color
-  const bottomDivider = createSectionDivider(colors.headerBackground);
-  annotationsFrame.appendChild(bottomDivider);
 
   annotationsFrame.locked = true;
   return annotationsFrame;
