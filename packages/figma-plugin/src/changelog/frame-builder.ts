@@ -556,7 +556,7 @@ async function createAnnotationItem(annotation: import('@figma-versioning/core')
   annotationFrame.paddingBottom = ITEM_BOTTOM_PADDING;
   annotationFrame.fills = [];
 
-  // Header row with label and pin icon
+  // Header row with label
   const headerRow = figma.createFrame();
   headerRow.name = 'Annotation Header';
   headerRow.layoutMode = 'HORIZONTAL';
@@ -565,12 +565,6 @@ async function createAnnotationItem(annotation: import('@figma-versioning/core')
   headerRow.itemSpacing = 6;
   headerRow.fills = [];
   headerRow.counterAxisAlignItems = 'CENTER';
-
-  // Pin icon for pinned items
-  if (annotation.isPinned) {
-    const pinIcon = createText('📌', 12, 'Regular', colors.text);
-    headerRow.appendChild(pinIcon);
-  }
 
   // Label text - use labelMarkdown if available in properties, otherwise use label
   const labelContent = (annotation.properties?.labelMarkdown as string) || annotation.label;
