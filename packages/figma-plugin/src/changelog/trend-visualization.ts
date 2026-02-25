@@ -68,9 +68,9 @@ function getTrendColors(theme: 'light' | 'dark' | 'figjam'): TrendColors {
     text: themeColors.text,
     textSecondary: themeColors.textSecondary,
     textMuted: themeColors.textMuted,
-    background: themeColors.background,
-    headerBackground: themeColors.headerBackground,
-    border: themeColors.border,
+    background: { r: 0.2, g: 0.2, b: 0.2 }, // #333 (dark theme for trend panel)
+    headerBackground: { r: 0.133, g: 0.133, b: 0.133 }, // #222 (darker header)
+    border: { r: 0.267, g: 0.267, b: 0.267 }, // #444 (section border)
   };
 }
 
@@ -102,6 +102,42 @@ async function getLayerName(nodeId: string): Promise<string> {
 }
 
 /**
+ * Create a layered text node with split styling
+ * Creates a horizontal frame with two text nodes: page prefix and layer name
+ */
+async function createLayerNameText(
+  nodeId: string,
+  colors: TrendColors
+): Promise<FrameNode> {
+  const layerName = await getLayerName(nodeId);
+
+  const wrapper = figma.createFrame();
+  wrapper.name = 'Layer Name';
+  wrapper.layoutMode = 'HORIZONTAL';
+  wrapper.primaryAxisSizingMode = 'AUTO';
+  wrapper.counterAxisSizingMode = 'AUTO';
+  wrapper.itemSpacing = 0;
+  wrapper.fills = [];
+
+  const separatorIndex = layerName.indexOf(' / ');
+  if (separatorIndex >= 0) {
+    const prefix = layerName.substring(0, separatorIndex + 3);
+    const suffix = layerName.substring(separatorIndex + 3);
+
+    const prefixText = createText(prefix, 16, 'Regular', colors.textMuted);
+    wrapper.appendChild(prefixText);
+
+    const suffixText = createText(suffix, 16, 'Bold', colors.text);
+    wrapper.appendChild(suffixText);
+  } else {
+    const fullText = createText(layerName, 16, 'Bold', colors.text);
+    wrapper.appendChild(fullText);
+  }
+
+  return wrapper;
+}
+
+/**
  * Load Inter font for text rendering
  */
 async function loadInterFont(): Promise<void> {
@@ -129,9 +165,8 @@ function createText(
 
 /**
  * Create a flat section frame with 24px padding and no background
- * Optionally adds a bottom border.
  */
-function createSection(name: string, width: number, spacing: number, borderColor?: RGB): FrameNode {
+function createSection(name: string, width: number, spacing: number): FrameNode {
   const section = figma.createFrame();
   section.name = name;
   section.layoutMode = 'VERTICAL';
@@ -144,13 +179,6 @@ function createSection(name: string, width: number, spacing: number, borderColor
   section.paddingLeft = 24;
   section.paddingRight = 24;
   section.fills = [];
-  if (borderColor) {
-    section.strokes = [{ type: 'SOLID', color: borderColor }];
-    section.strokeTopWeight = 0;
-    section.strokeRightWeight = 0;
-    section.strokeBottomWeight = 1;
-    section.strokeLeftWeight = 0;
-  }
   return section;
 }
 
@@ -183,9 +211,9 @@ async function createFileGrowthChart(
   colors: TrendColors,
   width: number
 ): Promise<FrameNode> {
-  const section = createSection('File Growth Over Time', width, 24, colors.border);
+  const section = createSection('File Growth Over Time', width, 24);
 
-  const sectionTitle = createText('FILE GROWTH OVER TIME', 16, 'Bold', colors.text);
+  const sectionTitle = createText('FILE GROWTH OVER TIME', 16, 'Bold', { r: 0.753, g: 0.753, b: 0.753 });
   section.appendChild(sectionTitle);
 
   if (commits.length === 0) {
@@ -339,7 +367,7 @@ async function createFileGrowthChart(
     {
       label: 'AVG RATE',
       value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${formatNumber(Math.abs(analysis.averageGrowthRate))}/commit`,
-      color: colors.textSecondary,
+      color: colors.text,
     },
   ];
 
@@ -361,6 +389,12 @@ async function createFileGrowthChart(
 
   section.appendChild(statsFrame);
 
+  section.strokes = [{ type: 'SOLID', color: colors.border }];
+  section.strokeTopWeight = 0;
+  section.strokeRightWeight = 0;
+  section.strokeBottomWeight = 1;
+  section.strokeLeftWeight = 0;
+
   return section;
 }
 
@@ -381,14 +415,6 @@ function createPeriodTimeline(
 
   const contentWidth = width - 48;
 
-  const periodColors = {
-    expansion: colors.success,
-    cleanup: colors.error,
-    stable: colors.warning,
-    mixed: colors.textSecondary,
-  };
-
-  const periodColor = periodColors[classification.type];
   const periodLabels: Record<string, string> = {
     expansion: 'EXPANSION PHASE',
     cleanup: 'CLEANUP PHASE',
@@ -424,10 +450,10 @@ function createPeriodTimeline(
   periodBadge.paddingBottom = 6;
   periodBadge.paddingLeft = 12;
   periodBadge.paddingRight = 12;
-  periodBadge.fills = [{ type: 'SOLID', color: periodColor, opacity: 0.2 }];
+  periodBadge.fills = [{ type: 'SOLID', color: { r: 0.024, g: 0.024, b: 0.024 }, opacity: 0.4 }];
   periodBadge.cornerRadius = 6;
 
-  const periodText = createText(periodLabels[classification.type], 16, 'Bold', periodColor);
+  const periodText = createText(periodLabels[classification.type], 16, 'Bold', colors.text);
   periodBadge.appendChild(periodText);
   mainPeriod.appendChild(periodBadge);
 
@@ -495,7 +521,7 @@ function createPeriodTimeline(
     swatch.cornerRadius = 2;
     legendItem.appendChild(swatch);
 
-    const label = createText(`${segment.label} ${segment.rate}%`, 13, 'Regular', colors.text);
+    const label = createText(`${segment.label} ${segment.rate}%`, 13, 'Regular', colors.textMuted);
     legendItem.appendChild(label);
 
     legendFrame.appendChild(legendItem);
@@ -503,6 +529,12 @@ function createPeriodTimeline(
 
   timelineFrame.appendChild(legendFrame);
   section.appendChild(timelineFrame);
+
+  section.strokes = [{ type: 'SOLID', color: colors.border }];
+  section.strokeTopWeight = 0;
+  section.strokeRightWeight = 0;
+  section.strokeBottomWeight = 1;
+  section.strokeLeftWeight = 0;
 
   return section;
 }
@@ -580,8 +612,7 @@ async function createHighChurnList(
     infoFrame.itemSpacing = 4;
     infoFrame.fills = [];
 
-    const layerName = await getLayerName(hotspot.nodeId);
-    const nodeText = createText(layerName, 16, 'Medium', colors.text);
+    const layerNameText = await createLayerNameText(hotspot.nodeId, colors);
     const statsText = createText(
       `${formatNumber(hotspot.activityCount)} activities • ${formatNumber(hotspot.commitCount)} commits`,
       13,
@@ -589,7 +620,7 @@ async function createHighChurnList(
       colors.textMuted
     );
 
-    infoFrame.appendChild(nodeText);
+    infoFrame.appendChild(layerNameText);
     infoFrame.appendChild(statsText);
     itemFrame.appendChild(infoFrame);
 
@@ -619,9 +650,7 @@ export async function createTrendInsightsSection(
     width: config?.width ?? 800,
   };
 
-  const { detectTheme } = await import('./theme');
-  const theme = detectTheme();
-  const colors = getTrendColors(theme);
+  const colors = getTrendColors('dark');
 
   const analytics = computeChangelogAnalytics(commits, {
     recentCommitsForNodes: fullConfig.recentCommits,
@@ -634,7 +663,7 @@ export async function createTrendInsightsSection(
   container.resize(fullConfig.width, 100);
   container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'FIXED';
-  container.itemSpacing = 0;
+  container.itemSpacing = 16;
   container.fills = [{ type: 'SOLID', color: colors.background }];
   container.cornerRadius = 8;
 
