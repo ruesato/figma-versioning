@@ -502,7 +502,7 @@ export async function navigateFromHistogramBar(): Promise<boolean> {
           if (changelogFrame && 'type' in changelogFrame && changelogFrame.type !== 'DOCUMENT') {
             // Ensure we're on the changelog page
             const changelogPage = await getOrCreateChangelogPage();
-            figma.currentPage = changelogPage;
+            await figma.setCurrentPageAsync(changelogPage);
 
             // Navigate to the changelog entry
             figma.viewport.scrollAndZoomIntoView([changelogFrame as SceneNode]);

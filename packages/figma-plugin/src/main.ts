@@ -1052,7 +1052,7 @@ export default function () {
       // Navigate to the changelog page
       const { getOrCreateChangelogPage } = await import('./changelog');
       const changelogPage = await getOrCreateChangelogPage();
-      figma.currentPage = changelogPage;
+      await figma.setCurrentPageAsync(changelogPage);
 
       // Scroll to the frame
       figma.viewport.scrollAndZoomIntoView([changelogFrame as SceneNode]);

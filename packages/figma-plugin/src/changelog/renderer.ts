@@ -142,7 +142,7 @@ export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
 
   // Navigate to the new entry for visual feedback
   // Switch to Changelog page
-  figma.currentPage = changelogPage;
+  await figma.setCurrentPageAsync(changelogPage);
 
   // Scroll viewport to the entry
   figma.viewport.scrollAndZoomIntoView([entryFrame]);
@@ -283,7 +283,7 @@ export async function rebuildChangelog(
 
   // Navigate to the changelog page to show the rebuilt changelog
   const changelogPage = await getOrCreateChangelogPage();
-  figma.currentPage = changelogPage;
+  await figma.setCurrentPageAsync(changelogPage);
 
   // Scroll to show the container
   const container = await findContainerFrame();
