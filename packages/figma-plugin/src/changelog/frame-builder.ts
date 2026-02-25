@@ -95,8 +95,8 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   versionRow.itemSpacing = 4;
   versionRow.fills = [];
 
-  const versionLabel = createText('Version', 16, 'Regular', colors.textSecondary);
-  const versionNumber = createText(commit.version, 16, 'Bold', colors.text);
+  const versionLabel = createText('Version', 24, 'Bold', colors.textSecondary);
+  const versionNumber = createText(commit.version, 24, 'Bold', colors.text);
   versionRow.appendChild(versionLabel);
   versionRow.appendChild(versionNumber);
   versionRow.locked = true;
@@ -127,7 +127,7 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   if (commit.description && commit.description.trim().length > 0) {
     const descriptionText = createText(
       commit.description,
-      14,
+      13,
       'Regular',
       colors.textSecondary
     );
