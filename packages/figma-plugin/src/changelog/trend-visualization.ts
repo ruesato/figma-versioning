@@ -120,6 +120,10 @@ async function createLayerNameText(
   wrapper.fills = [];
 
   const separatorIndex = layerName.indexOf(' / ');
+
+  // Determine which text node gets the hyperlink (the layer name itself)
+  let linkText: TextNode;
+
   if (separatorIndex >= 0) {
     const prefix = layerName.substring(0, separatorIndex + 3);
     const suffix = layerName.substring(separatorIndex + 3);
@@ -127,11 +131,20 @@ async function createLayerNameText(
     const prefixText = createText(prefix, 16, 'Regular', colors.textMuted);
     wrapper.appendChild(prefixText);
 
-    const suffixText = createText(suffix, 16, 'Bold', colors.text);
-    wrapper.appendChild(suffixText);
+    linkText = createText(suffix, 16, 'Bold', colors.primary);
+    wrapper.appendChild(linkText);
   } else {
-    const fullText = createText(layerName, 16, 'Bold', colors.text);
-    wrapper.appendChild(fullText);
+    linkText = createText(layerName, 16, 'Bold', colors.primary);
+    wrapper.appendChild(linkText);
+  }
+
+  // Add hyperlink to navigate to the node on the canvas
+  try {
+    linkText.hyperlink = { type: 'NODE', value: nodeId };
+    linkText.textDecoration = 'UNDERLINE';
+  } catch {
+    // Node no longer exists — fall back to non-interactive muted style
+    linkText.fills = [{ type: 'SOLID', color: colors.textMuted }];
   }
 
   return wrapper;
