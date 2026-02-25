@@ -338,19 +338,14 @@ async function createCommentItem(
 
   // Reply context (if this is a reply)
   if (isReply && parentCommentText) {
-    // Truncate parent comment to one line (approximately 60 characters)
-    const truncatedParent = parentCommentText.length > 60
-      ? parentCommentText.substring(0, 60) + '...'
-      : parentCommentText;
-
     const replyToText = createText(
-      `Reply to: "${truncatedParent}"`,
+      `Reply to: ${parentCommentText}`,
       10,
       'Regular',
-      colors.textMuted
+      colors.textSecondary
     );
-    replyToText.textAutoResize = 'HEIGHT';
     replyToText.resize(frameWidth, replyToText.height);
+    replyToText.textTruncation = 'ENDING'; // Truncate with ellipsis at end
     commentFrame.appendChild(replyToText);
   }
 
@@ -368,7 +363,7 @@ async function createCommentItem(
   const commentText = createText(
     comment.text,
     12,
-    'Regular',
+    'Medium',
     colors.text
   );
   commentText.textAutoResize = 'HEIGHT';
