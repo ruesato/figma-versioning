@@ -481,6 +481,22 @@ async function createCommentsSection(commit: Commit, colors: ReturnType<typeof g
     }
   }
 
+  // Render orphaned replies — replies whose parent comment is from a previous commit
+  // (parentId exists but is not in the current commit's commentMap)
+  const orphanedRenderPromises: Promise<void>[] = [];
+  replies.forEach((orphanedReplies, parentId) => {
+    if (commentMap.has(parentId)) return; // Already handled above
+    for (const reply of orphanedReplies) {
+      // Render with a fallback label since we don't have the parent text available
+      orphanedRenderPromises.push(
+        createCommentItem(reply, colors, '(previous comment)').then(item => {
+          commentsFrame.appendChild(item);
+        })
+      );
+    }
+  });
+  await Promise.all(orphanedRenderPromises);
+
   commentsFrame.locked = true;
   return commentsFrame;
 }
