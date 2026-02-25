@@ -180,10 +180,14 @@ function createFileGrowthChart(
   colors: TrendColors,
   width: number
 ): FrameNode {
+  console.log('[FileGrowth] Starting section creation...');
   const section = createSection('File Growth Over Time', width, 24, colors.border);
+  console.log('[FileGrowth] Section created, type:', section.type, 'name:', section.name);
 
   const sectionTitle = createText('FILE GROWTH OVER TIME', 16, 'Bold', colors.text);
+  console.log('[FileGrowth] Section title created, appending to section...');
   section.appendChild(sectionTitle);
+  console.log('[FileGrowth] Section title appended, children:', section.children.length);
 
   if (commits.length === 0) {
     const emptyText = createText('No data available', 12, 'Regular', colors.textMuted);
@@ -239,6 +243,7 @@ function createFileGrowthChart(
   const points: VectorVertex[] = [];
   const segments: VectorSegment[] = [];
 
+  console.log('[FileGrowth] Processing', sorted.length, 'commits for chart...');
   sorted.forEach((commit, index) => {
     const x =
       chartPadding + (index / (sorted.length - 1)) * (contentWidth - chartPadding * 2);
@@ -263,17 +268,21 @@ function createFileGrowthChart(
       });
     }
   });
+  console.log('[FileGrowth] Points and segments calculated, setting vectorNetwork...');
 
   line.vectorNetwork = { vertices: points, segments, regions: [] };
   line.strokes = [{ type: 'SOLID', color: trendColor }];
   line.strokeWeight = 2;
   line.resize(contentWidth, chartHeight);
+  console.log('[FileGrowth] Line configured');
 
   chartFrame.appendChild(line);
+  console.log('[FileGrowth] Line appended to chartFrame');
 
   const keyIndices = [0, Math.floor(sorted.length / 2), sorted.length - 1].filter(
     (i, idx, arr) => arr.indexOf(i) === idx
   );
+  console.log('[FileGrowth] Creating', keyIndices.length, 'key point markers...');
 
   keyIndices.forEach((index) => {
     const commit = sorted[index];
@@ -290,8 +299,10 @@ function createFileGrowthChart(
     point.fills = [{ type: 'SOLID', color: trendColor }];
     chartFrame.appendChild(point);
   });
+  console.log('[FileGrowth] Points appended to chartFrame');
 
   chartWrapper.appendChild(chartFrame);
+  console.log('[FileGrowth] chartFrame appended to chartWrapper');
 
   // Date range row
   const dateRow = figma.createFrame();
@@ -314,7 +325,9 @@ function createFileGrowthChart(
   dateRow.appendChild(endText);
 
   chartWrapper.appendChild(dateRow);
+  console.log('[FileGrowth] dateRow appended to chartWrapper, appending chartWrapper to section...');
   section.appendChild(chartWrapper);
+  console.log('[FileGrowth] chartWrapper appended to section');
 
   // Stats row
   const statsFrame = figma.createFrame();
@@ -356,8 +369,9 @@ function createFileGrowthChart(
     statsFrame.appendChild(statFrame);
   });
 
+  console.log('[FileGrowth] stats created, appending statsFrame to section...');
   section.appendChild(statsFrame);
-
+  console.log('[FileGrowth] statsFrame appended, section complete, returning section');
   return section;
 }
 
@@ -655,17 +669,27 @@ export async function createTrendInsightsSection(
   console.log('[TrendInsights] Header appended, children:', container.children.length);
 
   // Sections
+  console.log('[TrendInsights] About to create fileGrowthSection...');
   const fileGrowthSection = createFileGrowthChart(
     commits,
     analytics.fileGrowth,
     colors,
     fullConfig.width
   );
+  console.log('[TrendInsights] fileGrowthSection created, type:', fileGrowthSection.type, 'name:', fileGrowthSection.name);
+  console.log('[TrendInsights] About to append fileGrowthSection to container...');
   try {
     container.appendChild(fileGrowthSection);
     console.log('[TrendInsights] FileGrowth appended, children:', container.children.length);
   } catch (e) {
     console.error('[TrendInsights] Failed to append fileGrowthSection:', e);
+    console.error('[TrendInsights] fileGrowthSection details:', {
+      id: fileGrowthSection.id,
+      name: fileGrowthSection.name,
+      type: fileGrowthSection.type,
+      children: fileGrowthSection.children.length,
+      parent: fileGrowthSection.parent?.name || 'none'
+    });
     throw e;
   }
 
