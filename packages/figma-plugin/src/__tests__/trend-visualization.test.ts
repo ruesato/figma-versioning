@@ -114,6 +114,9 @@ function setupFigmaMocks() {
         strokes: [],
         strokeWeight: 0,
         resize: () => {},
+        setVectorNetworkAsync: async (network: any) => {
+          vector.vectorNetwork = network;
+        },
       };
       mockNodes[id] = vector;
       return vector;
