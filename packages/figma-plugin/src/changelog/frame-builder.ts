@@ -329,7 +329,7 @@ async function createCommentItem(
   commentFrame.counterAxisSizingMode = 'FIXED';
   const frameWidth = isReply ? FRAME_WIDTH - PADDING * 2 - 16 : FRAME_WIDTH - PADDING * 2;
   commentFrame.resize(frameWidth, commentFrame.height);
-  commentFrame.itemSpacing = SECTION_SPACING;
+  commentFrame.itemSpacing = 4;
   commentFrame.paddingBottom = ITEM_BOTTOM_PADDING;
   commentFrame.fills = [];
   if (isReply) {
