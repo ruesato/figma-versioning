@@ -12,6 +12,8 @@ const COMMIT_CHUNK_PREFIX = 'figma_versioning_commit_chunk_';
 // SharedPluginData keys for backup storage
 const SHARED_PLUGIN_NAMESPACE = 'figma_versioning';
 const SHARED_PLUGIN_COMMITS_KEY = 'commits_backup';
+const SHARED_PLUGIN_COMMITS_CHUNK_PREFIX = 'commits_backup_chunk_';
+const SHARED_PLUGIN_COMMITS_CHUNK_COUNT_KEY = 'commits_backup_chunk_count';
 const MIGRATION_FLAG_KEY = 'migration_backfill_v1';
 
 // Cached file key - requires enablePrivatePluginApi in manifest
@@ -591,6 +593,7 @@ function migrateLegacyCommit(commit: any): Commit {
 /**
  * One-time migration: Backfill existing clientStorage commits to sharedPluginData
  * Only runs once on first launch after this feature is deployed
+ * Now uses chunking to avoid exceeding 100kB per key limit
  */
 async function migrateCommitsToSharedPluginData(): Promise<void> {
   try {
@@ -604,13 +607,17 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
       return;
     }
 
-    // Check if sharedPluginData already has commits
+    // Check if sharedPluginData already has commits (either old format or new chunked format)
     const existingBackup = figma.root.getSharedPluginData(
       SHARED_PLUGIN_NAMESPACE,
       SHARED_PLUGIN_COMMITS_KEY
     );
+    const existingChunkCount = figma.root.getSharedPluginData(
+      SHARED_PLUGIN_NAMESPACE,
+      SHARED_PLUGIN_COMMITS_CHUNK_COUNT_KEY
+    );
 
-    if (existingBackup) {
+    if (existingBackup || existingChunkCount) {
       figma.root.setSharedPluginData(SHARED_PLUGIN_NAMESPACE, MIGRATION_FLAG_KEY, 'true');
       return;
     }
@@ -630,13 +637,34 @@ async function migrateCommitsToSharedPluginData(): Promise<void> {
       }
     }
 
-    // If we have commits in clientStorage, backfill to sharedPluginData
+    // If we have commits in clientStorage, backfill to sharedPluginData using chunking
     if (commits.length > 0) {
-      const serializedCommits = JSON.parse(JSON.stringify(commits));
+      const SHARED_CHUNK_SIZE = 10;
+      const sharedChunks: Commit[][] = [];
+
+      for (let i = 0; i < commits.length; i += SHARED_CHUNK_SIZE) {
+        sharedChunks.push(commits.slice(i, i + SHARED_CHUNK_SIZE));
+      }
+
+      // Write each chunk with explicit JSON serialization
+      for (let i = 0; i < sharedChunks.length; i++) {
+        try {
+          const serialized = JSON.parse(JSON.stringify(sharedChunks[i]));
+          figma.root.setSharedPluginData(
+            SHARED_PLUGIN_NAMESPACE,
+            `${SHARED_PLUGIN_COMMITS_CHUNK_PREFIX}${i}`,
+            JSON.stringify(serialized)
+          );
+        } catch (error) {
+          console.error(`[Migration] ⚠ Failed to save chunk ${i} to sharedPluginData:`, error);
+        }
+      }
+
+      // Store chunk count for restore logic
       figma.root.setSharedPluginData(
         SHARED_PLUGIN_NAMESPACE,
-        SHARED_PLUGIN_COMMITS_KEY,
-        JSON.stringify(serializedCommits)
+        SHARED_PLUGIN_COMMITS_CHUNK_COUNT_KEY,
+        String(sharedChunks.length)
       );
     }
 
@@ -679,17 +707,38 @@ async function loadCommits(): Promise<Commit[]> {
   // Fallback: If clientStorage is empty, try to restore from sharedPluginData
   if (commits.length === 0) {
     try {
-      const backupData = figma.root.getSharedPluginData(
+      // Try new chunked format first
+      const chunkCountStr = figma.root.getSharedPluginData(
         SHARED_PLUGIN_NAMESPACE,
-        SHARED_PLUGIN_COMMITS_KEY
+        SHARED_PLUGIN_COMMITS_CHUNK_COUNT_KEY
       );
 
-      if (backupData) {
-        const parsedCommits = JSON.parse(backupData);
+      if (chunkCountStr) {
+        const chunkCount = parseInt(chunkCountStr, 10);
+        const restoredChunks: Commit[] = [];
 
-        if (Array.isArray(parsedCommits) && parsedCommits.length > 0) {
+        // Load all chunks from sharedPluginData
+        for (let i = 0; i < chunkCount; i++) {
+          try {
+            const chunkData = figma.root.getSharedPluginData(
+              SHARED_PLUGIN_NAMESPACE,
+              `${SHARED_PLUGIN_COMMITS_CHUNK_PREFIX}${i}`
+            );
+
+            if (chunkData) {
+              const parsedChunk = JSON.parse(chunkData);
+              if (Array.isArray(parsedChunk)) {
+                restoredChunks.push(...parsedChunk);
+              }
+            }
+          } catch (error) {
+            console.error(`[Storage] Error loading sharedPluginData chunk ${i}:`, error);
+          }
+        }
+
+        if (restoredChunks.length > 0) {
           // Restore Date objects (they were serialized as strings)
-          const restoredCommits = parsedCommits.map(c => ({
+          const restoredCommits = restoredChunks.map(c => ({
             ...c,
             timestamp: new Date(c.timestamp),
             comments: c.comments?.map((comment: any) => ({
@@ -703,27 +752,76 @@ async function loadCommits(): Promise<Commit[]> {
 
           // Restore to clientStorage (chunked)
           const CHUNK_SIZE = 10;
-          const chunks: Commit[][] = [];
+          const clientChunks: Commit[][] = [];
           for (let i = 0; i < migratedCommits.length; i += CHUNK_SIZE) {
-            chunks.push(migratedCommits.slice(i, i + CHUNK_SIZE));
+            clientChunks.push(migratedCommits.slice(i, i + CHUNK_SIZE));
           }
 
           // Save each chunk
-          for (let i = 0; i < chunks.length; i++) {
-            const serialized = JSON.parse(JSON.stringify(chunks[i]));
+          for (let i = 0; i < clientChunks.length; i++) {
+            const serialized = JSON.parse(JSON.stringify(clientChunks[i]));
             await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
           }
 
           // Update metadata
           const restoredMeta = {
             ...meta,
-            chunkCount: chunks.length,
+            chunkCount: clientChunks.length,
             lastCommitId: migratedCommits[0]?.id
           };
           await saveChangelogMeta(restoredMeta);
 
           commitsCache = { result: migratedCommits, timestamp: Date.now() };
           return migratedCommits;
+        }
+      } else {
+        // Fallback to old single-key format for backward compatibility
+        const backupData = figma.root.getSharedPluginData(
+          SHARED_PLUGIN_NAMESPACE,
+          SHARED_PLUGIN_COMMITS_KEY
+        );
+
+        if (backupData) {
+          const parsedCommits = JSON.parse(backupData);
+
+          if (Array.isArray(parsedCommits) && parsedCommits.length > 0) {
+            // Restore Date objects (they were serialized as strings)
+            const restoredCommits = parsedCommits.map(c => ({
+              ...c,
+              timestamp: new Date(c.timestamp),
+              comments: c.comments?.map((comment: any) => ({
+                ...comment,
+                timestamp: new Date(comment.timestamp)
+              })) || []
+            }));
+
+            // Migrate legacy commits
+            const migratedCommits = restoredCommits.map(migrateLegacyCommit);
+
+            // Restore to clientStorage (chunked)
+            const CHUNK_SIZE = 10;
+            const clientChunks: Commit[][] = [];
+            for (let i = 0; i < migratedCommits.length; i += CHUNK_SIZE) {
+              clientChunks.push(migratedCommits.slice(i, i + CHUNK_SIZE));
+            }
+
+            // Save each chunk
+            for (let i = 0; i < clientChunks.length; i++) {
+              const serialized = JSON.parse(JSON.stringify(clientChunks[i]));
+              await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
+            }
+
+            // Update metadata
+            const restoredMeta = {
+              ...meta,
+              chunkCount: clientChunks.length,
+              lastCommitId: migratedCommits[0]?.id
+            };
+            await saveChangelogMeta(restoredMeta);
+
+            commitsCache = { result: migratedCommits, timestamp: Date.now() };
+            return migratedCommits;
+          }
         }
       }
     } catch (error) {
@@ -738,7 +836,7 @@ async function loadCommits(): Promise<Commit[]> {
 
 /**
  * Save a new commit to storage with chunking
- * Stores commits in chunks of up to 10 commits per chunk
+ * Stores commits in chunks of up to 10 commits per chunk in both clientStorage and sharedPluginData
  */
 async function saveCommit(commit: Commit): Promise<void> {
   // Invalidate cache on write
@@ -758,26 +856,39 @@ async function saveCommit(commit: Commit): Promise<void> {
     chunks.push(commits.slice(i, i + CHUNK_SIZE));
   }
 
-  // Save each chunk with explicit JSON serialization to handle Date objects
+  // Save each chunk to clientStorage with explicit JSON serialization to handle Date objects
   for (let i = 0; i < chunks.length; i++) {
     const serialized = JSON.parse(JSON.stringify(chunks[i]));
     await figma.clientStorage.setAsync(`${COMMIT_CHUNK_PREFIX}${i}`, serialized);
   }
 
   // Dual-write: Also save to sharedPluginData as backup (survives clientStorage clears)
+  // Use chunking to avoid exceeding 100kB per key limit
   try {
-    const serializedCommits = JSON.parse(JSON.stringify(commits));
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        const serialized = JSON.parse(JSON.stringify(chunks[i]));
+        figma.root.setSharedPluginData(
+          SHARED_PLUGIN_NAMESPACE,
+          `${SHARED_PLUGIN_COMMITS_CHUNK_PREFIX}${i}`,
+          JSON.stringify(serialized)
+        );
+      } catch (error) {
+        console.warn(`[Storage] ⚠ Failed to save chunk ${i} to sharedPluginData:`, error);
+      }
+    }
+
+    // Store chunk count for restore logic
     figma.root.setSharedPluginData(
       SHARED_PLUGIN_NAMESPACE,
-      SHARED_PLUGIN_COMMITS_KEY,
-      JSON.stringify(serializedCommits)
+      SHARED_PLUGIN_COMMITS_CHUNK_COUNT_KEY,
+      String(chunks.length)
     );
   } catch (error) {
     console.warn(`[Storage] ⚠ Failed to save backup to sharedPluginData:`, error);
     // Non-fatal: clientStorage save succeeded, so we can continue
   }
 
-  // Verify the commit was saved (read back and validate)
   // Update metadata
   meta.chunkCount = chunks.length;
   meta.lastCommitId = commit.id;
