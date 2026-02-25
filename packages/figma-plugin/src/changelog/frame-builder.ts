@@ -362,7 +362,7 @@ async function createCommentItem(
   // Comment text
   const commentText = createText(
     comment.text,
-    12,
+    13,
     'Medium',
     colors.text
   );
