@@ -11,11 +11,17 @@ import { getPropertyLabel } from './property-labels';
 import { formatPropertyValue } from './property-formatter';
 
 const FRAME_WIDTH = 600;
-const PADDING = 16;
-const SECTION_SPACING = 12;
+const PADDING = 24; // Section padding on all sides
+const SECTION_SPACING = 12; // Gap within sections
+const HEADER_PADDING_TOP = 32;
+const HEADER_PADDING_BOTTOM = 12;
+const ITEM_SPACING = 8; // Gap between section items
 const LABEL_WIDTH = 88; // Width for property labels in columnar layout
+const ITEM_BOTTOM_PADDING = 16; // Bottom padding for comment/annotation items
 const CARD_PADDING = 16;
 const CARD_BORDER_RADIUS = 8;
+const CARD_BORDER_COLOR = { r: 0.902, g: 0.902, b: 0.902 }; // #e6e6e6
+const SECTION_DIVIDER_COLOR = { r: 0.878, g: 0.878, b: 0.878 }; // #e0e0e0
 
 /**
  * Load Inter font for text rendering
@@ -24,6 +30,21 @@ async function loadInterFont(): Promise<void> {
   await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
   await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
   await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
+}
+
+/**
+ * Create a section divider line (1px top border)
+ */
+function createSectionDivider(): FrameNode {
+  const divider = figma.createFrame();
+  divider.name = 'Section Divider';
+  divider.layoutMode = 'HORIZONTAL';
+  divider.primaryAxisSizingMode = 'FIXED';
+  divider.counterAxisSizingMode = 'FIXED';
+  divider.resize(FRAME_WIDTH, 1);
+  divider.fills = [{ type: 'SOLID', color: SECTION_DIVIDER_COLOR }];
+  divider.locked = true;
+  return divider;
 }
 
 /**
@@ -58,9 +79,9 @@ function createHeaderSection(commit: Commit, colors: ReturnType<typeof getThemeC
   header.primaryAxisSizingMode = 'AUTO';
   header.counterAxisSizingMode = 'AUTO';
   header.resize(FRAME_WIDTH, header.height);
-  header.itemSpacing = 8;
-  header.paddingTop = PADDING;
-  header.paddingBottom = PADDING;
+  header.itemSpacing = ITEM_SPACING;
+  header.paddingTop = HEADER_PADDING_TOP;
+  header.paddingBottom = HEADER_PADDING_BOTTOM;
   header.paddingLeft = PADDING;
   header.paddingRight = PADDING;
   header.fills = [{ type: 'SOLID', color: colors.headerBackground }];
@@ -244,10 +265,16 @@ async function createPagesChangedSection(
   sectionFrame.primaryAxisSizingMode = 'AUTO';
   sectionFrame.counterAxisSizingMode = 'FIXED';
   sectionFrame.resize(FRAME_WIDTH, sectionFrame.height);
-  sectionFrame.itemSpacing = 8;
+  sectionFrame.itemSpacing = ITEM_SPACING;
+  sectionFrame.paddingTop = PADDING;
+  sectionFrame.paddingBottom = PADDING;
   sectionFrame.paddingLeft = PADDING;
   sectionFrame.paddingRight = PADDING;
   sectionFrame.fills = [];
+
+  // Add top divider
+  const divider = createSectionDivider();
+  sectionFrame.appendChild(divider);
 
   // Section header with badge
   const sectionHeader = createSectionHeader('Pages Changed', pageStats.length, colors.pagesChangedBadge, colors);
@@ -302,7 +329,8 @@ async function createCommentItem(
   commentFrame.counterAxisSizingMode = 'FIXED';
   const frameWidth = isReply ? FRAME_WIDTH - PADDING * 2 - 16 : FRAME_WIDTH - PADDING * 2;
   commentFrame.resize(frameWidth, commentFrame.height);
-  commentFrame.itemSpacing = 4;
+  commentFrame.itemSpacing = SECTION_SPACING;
+  commentFrame.paddingBottom = ITEM_BOTTOM_PADDING;
   commentFrame.fills = [];
   if (isReply) {
     commentFrame.paddingLeft = 16;
@@ -406,10 +434,16 @@ async function createCommentsSection(commit: Commit, colors: ReturnType<typeof g
   commentsFrame.primaryAxisSizingMode = 'AUTO';
   commentsFrame.counterAxisSizingMode = 'FIXED';
   commentsFrame.resize(FRAME_WIDTH, commentsFrame.height);
-  commentsFrame.itemSpacing = 12;
+  commentsFrame.itemSpacing = ITEM_SPACING;
+  commentsFrame.paddingTop = PADDING;
+  commentsFrame.paddingBottom = PADDING;
   commentsFrame.paddingLeft = PADDING;
   commentsFrame.paddingRight = PADDING;
   commentsFrame.fills = [];
+
+  // Add top divider
+  const divider = createSectionDivider();
+  commentsFrame.appendChild(divider);
 
   // Section header with badge
   const sectionHeader = createSectionHeader('Comments', commit.comments.length, colors.commentBadge, colors);
@@ -507,7 +541,8 @@ async function createAnnotationItem(annotation: import('@figma-versioning/core')
   annotationFrame.primaryAxisSizingMode = 'AUTO';
   annotationFrame.counterAxisSizingMode = 'FIXED';
   annotationFrame.resize(FRAME_WIDTH - PADDING * 2, annotationFrame.height);
-  annotationFrame.itemSpacing = 6;
+  annotationFrame.itemSpacing = SECTION_SPACING;
+  annotationFrame.paddingBottom = ITEM_BOTTOM_PADDING;
   annotationFrame.fills = [];
 
   // Header row with label and pin icon
@@ -652,10 +687,16 @@ async function createAnnotationsSection(commit: Commit, colors: ReturnType<typeo
   annotationsFrame.primaryAxisSizingMode = 'AUTO';
   annotationsFrame.counterAxisSizingMode = 'FIXED';
   annotationsFrame.resize(FRAME_WIDTH, annotationsFrame.height);
-  annotationsFrame.itemSpacing = 12;
+  annotationsFrame.itemSpacing = ITEM_SPACING;
+  annotationsFrame.paddingTop = PADDING;
+  annotationsFrame.paddingBottom = PADDING;
   annotationsFrame.paddingLeft = PADDING;
   annotationsFrame.paddingRight = PADDING;
   annotationsFrame.fills = [];
+
+  // Add top divider
+  const divider = createSectionDivider();
+  annotationsFrame.appendChild(divider);
 
   // Section header with badge
   const sectionHeader = createSectionHeader('Annotations', commit.annotations.length, colors.annotationBadge, colors);
@@ -715,10 +756,16 @@ function createDevStatusSection(commit: Commit, colors: ReturnType<typeof getThe
   section.primaryAxisSizingMode = 'AUTO';
   section.counterAxisSizingMode = 'FIXED';
   section.resize(FRAME_WIDTH, section.height);
-  section.itemSpacing = 8;
+  section.itemSpacing = ITEM_SPACING;
+  section.paddingTop = PADDING;
+  section.paddingBottom = PADDING;
   section.paddingLeft = PADDING;
   section.paddingRight = PADDING;
   section.fills = [];
+
+  // Add top divider
+  const divider = createSectionDivider();
+  section.appendChild(divider);
 
   // Section header with green badge
   const sectionHeader = createSectionHeader('Dev Status', commit.devStatusChanges.length, colors.devStatusBadge, colors);
@@ -793,11 +840,11 @@ export async function createCommitEntryFrame(commit: Commit, pageStats?: import(
   container.counterAxisSizingMode = 'AUTO';
   container.resize(FRAME_WIDTH, container.height);
   container.itemSpacing = SECTION_SPACING;
-  container.paddingBottom = PADDING;
+  container.paddingBottom = HEADER_PADDING_BOTTOM;
   container.fills = [{ type: 'SOLID', color: colors.background }];
-  container.strokes = [{ type: 'SOLID', color: colors.border }];
+  container.strokes = [{ type: 'SOLID', color: CARD_BORDER_COLOR }];
   container.strokeWeight = 1;
-  container.cornerRadius = 8;
+  container.cornerRadius = CARD_BORDER_RADIUS;
   container.clipsContent = true;
 
   // Add header section (includes version, author, timestamp, title, description)
