@@ -93,10 +93,14 @@ async function getLayerName(nodeId: string): Promise<string> {
         }
       }
 
-      return pageName ? `${pageName} / ${node.name}` : node.name;
+      const result = pageName ? `${pageName} / ${node.name}` : node.name;
+      console.log('[TrendInsights] getLayerName success:', nodeId, '->', result);
+      return result;
     }
+    console.log('[TrendInsights] getLayerName node not found:', nodeId);
     return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
-  } catch {
+  } catch (e) {
+    console.error('[TrendInsights] getLayerName error:', nodeId, e);
     return `Layer ${nodeId.substring(0, 8)}... (deleted)`;
   }
 }
@@ -630,6 +634,7 @@ export async function createTrendInsightsSection(
   container.itemSpacing = 0;
   container.fills = [{ type: 'SOLID', color: colors.background }];
   container.cornerRadius = 8;
+  console.log('[TrendInsights] Container created:', container.name, 'children:', container.children.length);
 
   // Header — light gray background, large title
   const header = figma.createFrame();
@@ -647,6 +652,7 @@ export async function createTrendInsightsSection(
   const title = createText('Trend Insights & Analytics', 24, 'Bold', colors.text);
   header.appendChild(title);
   container.appendChild(header);
+  console.log('[TrendInsights] Header appended, children:', container.children.length);
 
   // Sections
   const fileGrowthSection = createFileGrowthChart(
@@ -655,14 +661,26 @@ export async function createTrendInsightsSection(
     colors,
     fullConfig.width
   );
-  container.appendChild(fileGrowthSection);
+  try {
+    container.appendChild(fileGrowthSection);
+    console.log('[TrendInsights] FileGrowth appended, children:', container.children.length);
+  } catch (e) {
+    console.error('[TrendInsights] Failed to append fileGrowthSection:', e);
+    throw e;
+  }
 
   const periodSection = createPeriodTimeline(
     analytics.periodClassification,
     colors,
     fullConfig.width
   );
-  container.appendChild(periodSection);
+  try {
+    container.appendChild(periodSection);
+    console.log('[TrendInsights] Period appended, children:', container.children.length);
+  } catch (e) {
+    console.error('[TrendInsights] Failed to append periodSection:', e);
+    throw e;
+  }
 
   const highChurnSection = await createHighChurnList(
     analytics.activeNodes.hotspots,
@@ -670,8 +688,15 @@ export async function createTrendInsightsSection(
     colors,
     fullConfig.width
   );
-  container.appendChild(highChurnSection);
+  try {
+    container.appendChild(highChurnSection);
+    console.log('[TrendInsights] HighChurn appended, children:', container.children.length);
+  } catch (e) {
+    console.error('[TrendInsights] Failed to append highChurnSection:', e);
+    throw e;
+  }
 
+  console.log('[TrendInsights] Container complete, final children:', container.children.length);
   return container;
 }
 
@@ -684,7 +709,11 @@ export async function renderTrendInsightsOnChangelogPage(
   commits: Commit[],
   config?: TrendVisualizationConfig
 ): Promise<FrameNode> {
+  console.log('[TrendInsights] Rendering trend insights...');
+  console.log('[TrendInsights] Current page before loading:', figma.currentPage?.name || 'none');
   const changelogPage = await getOrCreateChangelogPage();
+  console.log('[TrendInsights] Changelog page loaded:', changelogPage.name, 'children:', changelogPage.children.length);
+  console.log('[TrendInsights] Current page after loading:', figma.currentPage?.name || 'none');
 
   // Remove existing trend insights if present
   const nodesToRemove: SceneNode[] = [];
@@ -697,8 +726,23 @@ export async function renderTrendInsightsOnChangelogPage(
     node.remove();
   }
 
+  console.log('[TrendInsights] Setting current page to Changelog before creating frames...');
+  await figma.setCurrentPageAsync(changelogPage);
+  console.log('[TrendInsights] Current page after set:', figma.currentPage?.name || 'none');
+
   const trendInsights = await createTrendInsightsSection(commits, config);
-  changelogPage.appendChild(trendInsights);
+  console.log('[TrendInsights] TrendInsights container created, children:', trendInsights.children.length);
+  console.log('[TrendInsights] Container parent before append:', trendInsights.parent?.name || 'none');
+
+  if (trendInsights.parent !== changelogPage) {
+    console.log('[TrendInsights] Container is not on Changelog page, appending...');
+    changelogPage.appendChild(trendInsights);
+    console.log('[TrendInsights] Container parent after append:', trendInsights.parent?.name || 'none');
+  } else {
+    console.log('[TrendInsights] Container already on Changelog page');
+  }
+
+  console.log('[TrendInsights] Changelog page children after all operations:', changelogPage.children.length);
 
   trendInsights.x = -900;
   trendInsights.y = 400;

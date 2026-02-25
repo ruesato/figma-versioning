@@ -43,11 +43,16 @@ export async function getOrCreateChangelogPage(): Promise<PageNode> {
   const existingPage = findChangelogPage();
 
   if (existingPage) {
+    console.log('[PageManager] Found existing Changelog page, loading...');
     await existingPage.loadAsync();
+    console.log('[PageManager] Changelog page loaded, children:', existingPage.children.length);
     return existingPage;
   }
 
-  return createChangelogPage();
+  console.log('[PageManager] Creating new Changelog page...');
+  const newPage = createChangelogPage();
+  console.log('[PageManager] Changelog page created');
+  return newPage;
 }
 
 /**
