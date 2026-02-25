@@ -116,7 +116,7 @@ async function createLayerNameText(
   wrapper.layoutMode = 'HORIZONTAL';
   wrapper.primaryAxisSizingMode = 'AUTO';
   wrapper.counterAxisSizingMode = 'AUTO';
-  wrapper.itemSpacing = 0;
+  wrapper.itemSpacing = 5;
   wrapper.fills = [];
 
   const separatorIndex = layerName.indexOf(' / ');
