@@ -702,14 +702,6 @@ async function createAnnotationsSection(commit: Commit, colors: ReturnType<typeo
   annotationsFrame.paddingLeft = PADDING;
   annotationsFrame.paddingRight = PADDING;
   annotationsFrame.fills = [];
-  // Apply bottom border with header background color
-  annotationsFrame.strokeWeight = 1;
-  annotationsFrame.strokes = [{ type: 'SOLID', color: colors.headerBackground }];
-  // Set other sides to 0 weight (bottom-only border)
-  annotationsFrame.strokeTopWeight = 0;
-  annotationsFrame.strokeLeftWeight = 0;
-  annotationsFrame.strokeRightWeight = 0;
-  annotationsFrame.strokeBottomWeight = 1;
 
   // Section header with badge
   const sectionHeader = createSectionHeader('Annotations', commit.annotations.length, colors.annotationBadge, colors);
