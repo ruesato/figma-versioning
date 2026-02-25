@@ -678,7 +678,7 @@ export async function createTrendInsightsSection(
   header.paddingBottom = 12;
   header.paddingLeft = 24;
   header.paddingRight = 24;
-  header.fills = [{ type: 'SOLID', color: colors.headerBackground }];
+  header.fills = [{ type: 'SOLID', color: colors.background }];
 
   const title = createText('Trend Insights & Analytics', 24, 'Bold', colors.text);
   header.appendChild(title);
