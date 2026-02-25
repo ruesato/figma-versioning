@@ -68,9 +68,9 @@ function getTrendColors(theme: 'light' | 'dark' | 'figjam'): TrendColors {
     text: themeColors.text,
     textSecondary: themeColors.textSecondary,
     textMuted: themeColors.textMuted,
-    background: themeColors.background,
-    headerBackground: themeColors.headerBackground,
-    border: themeColors.border,
+    background: { r: 0.2, g: 0.2, b: 0.2 }, // #333 (dark theme for trend panel)
+    headerBackground: { r: 0.133, g: 0.133, b: 0.133 }, // #222 (darker header)
+    border: { r: 0.267, g: 0.267, b: 0.267 }, // #444 (section border)
   };
 }
 
@@ -102,6 +102,55 @@ async function getLayerName(nodeId: string): Promise<string> {
 }
 
 /**
+ * Create a layered text node with split styling
+ * Creates a horizontal frame with two text nodes: page prefix and layer name
+ */
+async function createLayerNameText(
+  nodeId: string,
+  colors: TrendColors
+): Promise<FrameNode> {
+  const layerName = await getLayerName(nodeId);
+
+  const wrapper = figma.createFrame();
+  wrapper.name = 'Layer Name';
+  wrapper.layoutMode = 'HORIZONTAL';
+  wrapper.primaryAxisSizingMode = 'AUTO';
+  wrapper.counterAxisSizingMode = 'AUTO';
+  wrapper.itemSpacing = 5;
+  wrapper.fills = [];
+
+  const separatorIndex = layerName.indexOf(' / ');
+
+  // Determine which text node gets the hyperlink (the layer name itself)
+  let linkText: TextNode;
+
+  if (separatorIndex >= 0) {
+    const prefix = layerName.substring(0, separatorIndex + 3);
+    const suffix = layerName.substring(separatorIndex + 3);
+
+    const prefixText = createText(prefix, 16, 'Regular', colors.textMuted);
+    wrapper.appendChild(prefixText);
+
+    linkText = createText(suffix, 16, 'Bold', colors.primary);
+    wrapper.appendChild(linkText);
+  } else {
+    linkText = createText(layerName, 16, 'Bold', colors.primary);
+    wrapper.appendChild(linkText);
+  }
+
+  // Add hyperlink to navigate to the node on the canvas
+  try {
+    linkText.hyperlink = { type: 'NODE', value: nodeId };
+    linkText.textDecoration = 'UNDERLINE';
+  } catch {
+    // Node no longer exists — fall back to non-interactive muted style
+    linkText.fills = [{ type: 'SOLID', color: colors.textMuted }];
+  }
+
+  return wrapper;
+}
+
+/**
  * Load Inter font for text rendering
  */
 async function loadInterFont(): Promise<void> {
@@ -129,9 +178,8 @@ function createText(
 
 /**
  * Create a flat section frame with 24px padding and no background
- * Optionally adds a bottom border.
  */
-function createSection(name: string, width: number, spacing: number, borderColor?: RGB): FrameNode {
+function createSection(name: string, width: number, spacing: number): FrameNode {
   const section = figma.createFrame();
   section.name = name;
   section.layoutMode = 'VERTICAL';
@@ -144,13 +192,6 @@ function createSection(name: string, width: number, spacing: number, borderColor
   section.paddingLeft = 24;
   section.paddingRight = 24;
   section.fills = [];
-  if (borderColor) {
-    section.strokes = [{ type: 'SOLID', color: borderColor }];
-    section.strokeTopWeight = 0;
-    section.strokeRightWeight = 0;
-    section.strokeBottomWeight = 1;
-    section.strokeLeftWeight = 0;
-  }
   return section;
 }
 
@@ -183,9 +224,9 @@ async function createFileGrowthChart(
   colors: TrendColors,
   width: number
 ): Promise<FrameNode> {
-  const section = createSection('File Growth Over Time', width, 24, colors.border);
+  const section = createSection('File Growth Over Time', width, 24);
 
-  const sectionTitle = createText('FILE GROWTH OVER TIME', 16, 'Bold', colors.text);
+  const sectionTitle = createText('FILE GROWTH OVER TIME', 16, 'Bold', { r: 0.753, g: 0.753, b: 0.753 });
   section.appendChild(sectionTitle);
 
   if (commits.length === 0) {
@@ -339,7 +380,7 @@ async function createFileGrowthChart(
     {
       label: 'AVG RATE',
       value: `${analysis.averageGrowthRate >= 0 ? '+' : ''}${formatNumber(Math.abs(analysis.averageGrowthRate))}/commit`,
-      color: colors.textSecondary,
+      color: colors.text,
     },
   ];
 
@@ -361,6 +402,12 @@ async function createFileGrowthChart(
 
   section.appendChild(statsFrame);
 
+  section.strokes = [{ type: 'SOLID', color: colors.border }];
+  section.strokeTopWeight = 0;
+  section.strokeRightWeight = 0;
+  section.strokeBottomWeight = 1;
+  section.strokeLeftWeight = 0;
+
   return section;
 }
 
@@ -381,14 +428,6 @@ function createPeriodTimeline(
 
   const contentWidth = width - 48;
 
-  const periodColors = {
-    expansion: colors.success,
-    cleanup: colors.error,
-    stable: colors.warning,
-    mixed: colors.textSecondary,
-  };
-
-  const periodColor = periodColors[classification.type];
   const periodLabels: Record<string, string> = {
     expansion: 'EXPANSION PHASE',
     cleanup: 'CLEANUP PHASE',
@@ -424,10 +463,10 @@ function createPeriodTimeline(
   periodBadge.paddingBottom = 6;
   periodBadge.paddingLeft = 12;
   periodBadge.paddingRight = 12;
-  periodBadge.fills = [{ type: 'SOLID', color: periodColor, opacity: 0.2 }];
+  periodBadge.fills = [{ type: 'SOLID', color: { r: 0.024, g: 0.024, b: 0.024 }, opacity: 0.4 }];
   periodBadge.cornerRadius = 6;
 
-  const periodText = createText(periodLabels[classification.type], 16, 'Bold', periodColor);
+  const periodText = createText(periodLabels[classification.type], 16, 'Bold', colors.text);
   periodBadge.appendChild(periodText);
   mainPeriod.appendChild(periodBadge);
 
@@ -495,7 +534,7 @@ function createPeriodTimeline(
     swatch.cornerRadius = 2;
     legendItem.appendChild(swatch);
 
-    const label = createText(`${segment.label} ${segment.rate}%`, 13, 'Regular', colors.text);
+    const label = createText(`${segment.label} ${segment.rate}%`, 13, 'Regular', colors.textMuted);
     legendItem.appendChild(label);
 
     legendFrame.appendChild(legendItem);
@@ -503,6 +542,12 @@ function createPeriodTimeline(
 
   timelineFrame.appendChild(legendFrame);
   section.appendChild(timelineFrame);
+
+  section.strokes = [{ type: 'SOLID', color: colors.border }];
+  section.strokeTopWeight = 0;
+  section.strokeRightWeight = 0;
+  section.strokeBottomWeight = 1;
+  section.strokeLeftWeight = 0;
 
   return section;
 }
@@ -551,6 +596,7 @@ async function createHighChurnList(
     itemFrame.itemSpacing = 12;
     itemFrame.fills = [];
     itemFrame.counterAxisAlignItems = 'MIN';
+    itemFrame.setPluginData('churnNodeId', hotspot.nodeId);
 
     // Rank badge — fixed 32px min-width, content right-aligned
     const badge = figma.createFrame();
@@ -580,8 +626,7 @@ async function createHighChurnList(
     infoFrame.itemSpacing = 4;
     infoFrame.fills = [];
 
-    const layerName = await getLayerName(hotspot.nodeId);
-    const nodeText = createText(layerName, 16, 'Medium', colors.text);
+    const layerNameText = await createLayerNameText(hotspot.nodeId, colors);
     const statsText = createText(
       `${formatNumber(hotspot.activityCount)} activities • ${formatNumber(hotspot.commitCount)} commits`,
       13,
@@ -589,7 +634,7 @@ async function createHighChurnList(
       colors.textMuted
     );
 
-    infoFrame.appendChild(nodeText);
+    infoFrame.appendChild(layerNameText);
     infoFrame.appendChild(statsText);
     itemFrame.appendChild(infoFrame);
 
@@ -619,9 +664,7 @@ export async function createTrendInsightsSection(
     width: config?.width ?? 800,
   };
 
-  const { detectTheme } = await import('./theme');
-  const theme = detectTheme();
-  const colors = getTrendColors(theme);
+  const colors = getTrendColors('dark');
 
   const analytics = computeChangelogAnalytics(commits, {
     recentCommitsForNodes: fullConfig.recentCommits,
@@ -634,7 +677,7 @@ export async function createTrendInsightsSection(
   container.resize(fullConfig.width, 100);
   container.primaryAxisSizingMode = 'AUTO';
   container.counterAxisSizingMode = 'FIXED';
-  container.itemSpacing = 0;
+  container.itemSpacing = 16;
   container.fills = [{ type: 'SOLID', color: colors.background }];
   container.cornerRadius = 8;
 
@@ -649,7 +692,7 @@ export async function createTrendInsightsSection(
   header.paddingBottom = 12;
   header.paddingLeft = 24;
   header.paddingRight = 24;
-  header.fills = [{ type: 'SOLID', color: colors.headerBackground }];
+  header.fills = [{ type: 'SOLID', color: colors.background }];
 
   const title = createText('Trend Insights & Analytics', 24, 'Bold', colors.text);
   header.appendChild(title);
@@ -711,4 +754,64 @@ export async function renderTrendInsightsOnChangelogPage(
   trendInsights.y = 400;
 
   return trendInsights;
+}
+
+/**
+ * Navigate to the Figma canvas node linked to a selected high-churn item.
+ *
+ * Checks up to 3 levels up from the selection for a frame with `churnNodeId`
+ * plugin data, then switches to the containing page and scrolls the target
+ * node into view.
+ *
+ * @returns True if navigation occurred, false otherwise
+ */
+export async function navigateFromChurnItem(): Promise<boolean> {
+  const selection = figma.currentPage.selection;
+  if (selection.length !== 1) return false;
+
+  let node: SceneNode | null = selection[0];
+  for (let i = 0; i < 4 && node; i++) {
+    if ('getPluginData' in node) {
+      const churnNodeId = (node as FrameNode).getPluginData('churnNodeId');
+      if (churnNodeId) {
+        const targetNode = await figma.getNodeByIdAsync(churnNodeId);
+        if (!targetNode || !('type' in targetNode) || targetNode.type === 'DOCUMENT') {
+          figma.notify('Layer no longer exists in the document');
+          return true;
+        }
+
+        // Walk up to find the containing page
+        let current: BaseNode | null = targetNode;
+        let targetPage: PageNode | null = null;
+        while (current && current.parent) {
+          current = current.parent;
+          if (current.type === 'PAGE') {
+            targetPage = current as PageNode;
+            break;
+          }
+        }
+
+        if (targetPage) {
+          await figma.setCurrentPageAsync(targetPage);
+        }
+        figma.viewport.scrollAndZoomIntoView([targetNode as SceneNode]);
+        figma.currentPage.selection = [targetNode as SceneNode];
+        return true;
+      }
+    }
+    node = node.parent as SceneNode | null;
+  }
+  return false;
+}
+
+/**
+ * Setup high-churn layer interactivity by monitoring selection changes.
+ *
+ * Call once at plugin load to enable automatic navigation when users click
+ * on items in the Top N High-Churn Layers section.
+ */
+export function setupChurnInteractivity(): void {
+  figma.on('selectionchange', () => {
+    navigateFromChurnItem();
+  });
 }
