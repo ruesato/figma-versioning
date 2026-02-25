@@ -435,6 +435,14 @@ async function createCommentsSection(commit: Commit, colors: ReturnType<typeof g
   commentsFrame.paddingLeft = PADDING;
   commentsFrame.paddingRight = PADDING;
   commentsFrame.fills = [];
+  // Apply bottom border with header background color
+  commentsFrame.strokeWeight = 1;
+  commentsFrame.strokes = [{ type: 'SOLID', color: colors.headerBackground }];
+  // Set other sides to 0 weight (bottom-only border)
+  commentsFrame.strokeTopWeight = 0;
+  commentsFrame.strokeLeftWeight = 0;
+  commentsFrame.strokeRightWeight = 0;
+  commentsFrame.strokeBottomWeight = 1;
 
   // Section header with badge
   const sectionHeader = createSectionHeader('Comments', commit.comments.length, colors.commentBadge, colors);
