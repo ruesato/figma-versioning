@@ -552,7 +552,7 @@ async function createAnnotationItem(annotation: import('@figma-versioning/core')
   annotationFrame.primaryAxisSizingMode = 'AUTO';
   annotationFrame.counterAxisSizingMode = 'FIXED';
   annotationFrame.resize(FRAME_WIDTH - PADDING * 2, annotationFrame.height);
-  annotationFrame.itemSpacing = SECTION_SPACING;
+  annotationFrame.itemSpacing = 8;
   annotationFrame.paddingBottom = ITEM_BOTTOM_PADDING;
   annotationFrame.fills = [];
 
