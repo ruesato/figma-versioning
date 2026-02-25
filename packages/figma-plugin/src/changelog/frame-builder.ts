@@ -520,13 +520,13 @@ function createPropertyRow(
   row.fills = [];
 
   // Label with fixed width
-  const labelText = createText(label, 11, 'Regular', colors.textMuted);
+  const labelText = createText(label, 13, 'Regular', colors.textMuted);
   labelText.resize(LABEL_WIDTH, labelText.height);
   labelText.textTruncation = 'ENDING';
   row.appendChild(labelText);
 
   // Value with flexible width
-  const valueText = createText(value, 11, 'Regular', colors.text);
+  const valueText = createText(value, 13, 'Regular', colors.text);
   valueText.textAutoResize = 'HEIGHT';
   valueText.layoutGrow = 1;
   row.appendChild(valueText);
