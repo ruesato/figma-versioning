@@ -122,8 +122,8 @@ export async function getOrCreateContainerFrame(): Promise<FrameNode> {
  * @returns The created commit entry frame
  */
 export async function renderChangelogEntry(commit: Commit): Promise<FrameNode> {
-  // Create the commit entry frame
-  const entryFrame = await createCommitEntryFrame(commit);
+  // Create the commit entry frame with page changes
+  const entryFrame = await createCommitEntryFrame(commit, commit.pageChanges);
 
   // Get or create the container
   const container = await getOrCreateContainerFrame();
@@ -244,8 +244,8 @@ export async function rebuildChangelog(
     }
 
     try {
-      // Create the commit entry frame
-      const entryFrame = await createCommitEntryFrame(commit);
+      // Create the commit entry frame with page changes
+      const entryFrame = await createCommitEntryFrame(commit, commit.pageChanges);
 
       // Get or create the container (will be created on first iteration)
       const container = await getOrCreateContainerFrame();

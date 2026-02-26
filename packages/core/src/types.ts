@@ -129,6 +129,8 @@ export interface Commit {
    * Maps nodeId → { status, pageId, pageName, nodeName }
    */
   devStatusSnapshot?: Record<string, { status: LayerDevStatus; pageId: string; pageName: string; nodeName: string }>;
+  /** Page-level change statistics (pages with added/modified/removed nodes) */
+  pageChanges?: PageChangeStats[];
 }
 
 /**

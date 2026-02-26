@@ -1067,6 +1067,33 @@ export default function () {
         Object.entries(currentDevStatuses).map(([k, v]) => [k, { status: v.status, pageId: v.pageId, pageName: v.pageName, nodeName: v.nodeName }])
       );
 
+      // Build page change stats from tracking store
+      const pageChanges: PageChangeStats[] = [];
+      const entries = Array.from(changeTrackingStore.entries());
+      for (const entry of entries) {
+        const pageId = entry[0];
+        const tracker = entry[1];
+
+        const page = await figma.getNodeByIdAsync(pageId) as PageNode | null;
+        if (!page) continue;
+
+        const nodesAdded = tracker.nodesAdded.size;
+        const nodesRemoved = tracker.nodesRemoved.size;
+        const nodesModified = tracker.nodesModified.size;
+
+        // Only include pages with changes
+        if (nodesAdded > 0 || nodesRemoved > 0 || nodesModified > 0) {
+          pageChanges.push({
+            pageId: page.id,
+            pageName: page.name,
+            nodesAdded,
+            nodesRemoved,
+            nodesModified,
+            totalDelta: nodesAdded - nodesRemoved
+          });
+        }
+      }
+
       // Create commit object
       const now = new Date();
 
@@ -1083,7 +1110,8 @@ export default function () {
         annotations,
         metrics,
         devStatusChanges,
-        devStatusSnapshot
+        devStatusSnapshot,
+        pageChanges: pageChanges.length > 0 ? pageChanges : undefined
       };
 
       // Save commit data
